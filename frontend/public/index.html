@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADK Donation System</title>
+    <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+    <header>
+        <h1 id="title">🌎 ADK Donation System</h1>
+        <nav class="main-nav">
+            <button class="nav-btn active" data-page="dashboard">📊 Dashboard</button>
+            <button class="nav-btn" data-page="network">🌐 Rede</button>
+            <button class="nav-btn" data-page="referral">🔗 Links</button>
+        </nav>
+        <div class="header-right">
+            <select id="languageSelector">
+                <option value="pt">Português</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+            </select>
+            <button id="connectWallet">🔗 <span data-i18n="connect_wallet">Conectar MetaMask</span></button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Página 1: Dashboard -->
+        <div class="page active" id="dashboardPage">
+            <section id="dashboard">
+                <h2 data-i18n="dashboard">📊 Dashboard</h2>
+                <p><strong data-i18n="wallet_connected">Carteira Conectada:</strong> <span id="walletAddress">Desconectado</span></p>
+                <p><strong data-i18n="pool_balance">Saldo da Pool:</strong> <span id="poolBalance">0</span> <span>USDT</span></p>
+                <p><strong data-i18n="arbitrage_status">Status da Arbitragem:</strong> <span id="arbitrageStatus">Aguardando...</span></p>
+            </section>
+
+            <section id="donationSystem">
+                <h2 data-i18n="donation_system">💰 Sistema de Doação</h2>
+                <p><strong data-i18n="current_level">Nível Atual:</strong> <span id="userLevel">1</span></p>
+                <p><strong data-i18n="donations_received">Doações Recebidas:</strong> <span id="donationsReceived">0</span> / 10</p>
+                <button id="donate">💰 <span data-i18n="make_donation">Fazer Doação</span></button>
+            </section>
+        </div>
+
+        <!-- Página 2: Status da Rede -->
+        <div class="page" id="networkPage">
+            <section id="networkStatus">
+                <h2 data-i18n="network_status">🔗 Status da Rede</h2>
+                <p><strong data-i18n="user_network">Rede do Usuário:</strong> <span id="userNetwork">Desconhecido</span></p>
+                <p><strong data-i18n="people_each_level">Pessoas em cada nível:</strong> <span id="networkLevels">0</span></p>
+                <p><strong data-i18n="total_users">Total geral de usuários:</strong> <span id="totalUsers">0</span></p>
+                
+                <div class="network-view">
+                    <h3>Sua Rede</h3>
+                    <div class="network-levels">
+                        <div class="level-box">
+                            <h4>Nível 1</h4>
+                            <div class="level-users" id="level1Users"></div>
+                        </div>
+                        <div class="level-box">
+                            <h4>Nível 2</h4>
+                            <div class="level-users" id="level2Users"></div>
+                        </div>
+                        <div class="level-box">
+                            <h4>Nível 3</h4>
+                            <div class="level-users" id="level3Users"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Página 3: Links de Convite -->
+        <div class="page" id="referralPage">
+            <section id="referralLinks">
+                <h2>🔗 Links de Convite</h2>
+                <div class="link-container">
+                    <p><strong>Seu Link de Convite:</strong></p>
+                    <div class="copy-link">
+                        <input type="text" id="userReferralLink" readonly>
+                        <button id="copyUserLink" onclick="utils.copyToClipboard('userReferralLink')">📋 Copiar</button>
+                    </div>
+                    <p><small>Compartilhe este link para convidar pessoas e ganhar comissões!</small></p>
+                </div>
+                <div class="link-container">
+                    <p><strong>Seu Patrocinador:</strong> <span id="sponsorAddress">-</span></p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Modal de Seleção de Carteira -->
+        <div id="walletModal" class="modal">
+            <div class="modal-content">
+                <button class="close-modal">&times;</button>
+                <h2 data-i18n="select_wallet">Selecione sua Carteira</h2>
+                <div class="wallet-options">
+                    <button class="wallet-option" data-wallet="metamask">
+                        <img src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg" alt="MetaMask">
+                        <span>MetaMask</span>
+                    </button>
+                    <button class="wallet-option" data-wallet="walletconnect">
+                        <img src="https://raw.githubusercontent.com/WalletConnect/walletconnect-assets/master/Logo/Blue%20(Default)/Logo.svg" alt="WalletConnect">
+                        <span>WalletConnect</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Seleção de Plano -->
+        <div id="planModal" class="modal">
+            <div class="modal-content">
+                <button class="close-modal">&times;</button>
+                <h2 data-i18n="select_plan">Escolha seu Plano</h2>
+                <div class="plan-options">
+                    <div class="plan-card" data-plan="start">
+                        <h3>Start</h3>
+                        <p class="price">20 USDT</p>
+                        <button class="select-plan-btn" data-amount="20">Selecionar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação -->
+        <div id="confirmationModal" class="modal">
+            <div class="modal-content">
+                <button class="close-modal">&times;</button>
+                <h2 data-i18n="confirm_donation">Confirmar Doação</h2>
+                <div class="confirmation-details">
+                    <p><strong data-i18n="selected_plan">Plano Selecionado:</strong> <span id="selectedPlan"></span></p>
+                    <p><strong data-i18n="amount">Valor:</strong> <span id="selectedAmount"></span> USDT</p>
+                    <p><strong data-i18n="wallet">Carteira:</strong> <span id="selectedWallet"></span></p>
+                </div>
+                <div class="confirmation-buttons">
+                    <button id="confirmDonation" data-i18n="confirm">Confirmar</button>
+                    <button id="cancelDonation" data-i18n="cancel">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 ADK Donation System - <span data-i18n="all_rights_reserved">Todos os direitos reservados</span>.</p>
+    </footer>
+
+    <!-- Dependências -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.i18n/1.0.7/jquery.i18n.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.i18n/1.0.7/jquery.i18n.messagestore.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.i18n/1.0.7/jquery.i18n.fallbacks.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.i18n/1.0.7/jquery.i18n.parser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.i18n/1.0.7/jquery.i18n.emitter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+
+    <!-- Scripts da aplicação -->
+    <script>
+        // Configurações globais
+        const config = {
+            poolAddress: '0xa477E1a3F20E0fE460d1fb48cD8323248D3C42DD',
+            usdtAddress: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+            requiredNetwork: 137,
+            chainConfig: {
+                chainId: '0x89',
+                chainName: 'Polygon Mainnet',
+                nativeCurrency: {
+                    name: 'MATIC',
+                    symbol: 'MATIC',
+                    decimals: 18
+                },
+                rpcUrls: ['https://polygon-rpc.com/'],
+                blockExplorerUrls: ['https://polygonscan.com/']
+            }
+        };
+
+        // ABI do contrato USDT
+        const USDT_ABI = [
+            {
+                "constant": false,
+                "inputs": [
+                    {"name": "_to", "type": "address"},
+                    {"name": "_value", "type": "uint256"}
+                ],
+                "name": "transfer",
+                "outputs": [{"name": "", "type": "bool"}],
+                "type": "function"
+            },
+            {
+                "constant": true,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function"
+            }
+        ];
+
+        // Elementos do DOM
+        const elements = {
+            connectWalletBtn: document.getElementById('connectWallet'),
+            walletAddressSpan: document.getElementById('walletAddress'),
+            userNetworkSpan: document.getElementById('userNetwork'),
+            planModal: document.getElementById('planModal'),
+            confirmationModal: document.getElementById('confirmationModal'),
+            confirmDonationBtn: document.getElementById('confirmDonation'),
+            cancelDonationBtn: document.getElementById('cancelDonation'),
+            selectedPlanSpan: document.getElementById('selectedPlan'),
+            selectedAmountSpan: document.getElementById('selectedAmount'),
+            selectedWalletSpan: document.getElementById('selectedWallet')
+        };
+
+        // Utilitários
+        const utils = {
+            showLoading: (element) => {
+                element.disabled = true;
+                element.dataset.originalText = element.innerHTML;
+                element.innerHTML = '<span class="spinner"></span> Processando...';
+            },
+            hideLoading: (element) => {
+                element.disabled = false;
+                element.innerHTML = element.dataset.originalText;
+            },
+            showError: (message) => {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = `❌ ${message}`;
+                document.body.appendChild(errorDiv);
+                setTimeout(() => errorDiv.remove(), 5000);
+            },
+            showSuccess: (message) => {
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success-message';
+                successDiv.innerHTML = `✅ ${message}`;
+                document.body.appendChild(successDiv);
+                setTimeout(() => successDiv.remove(), 5000);
+            },
+            formatAddress: (address) => {
+                return `${address.slice(0, 6)}...${address.slice(-4)}`;
+            }
+        };
+
+        // Funções de Modal
+        const modal = {
+            show: (modalElement) => {
+                if (modalElement) {
+                    modalElement.style.display = 'block';
+                }
+            },
+            hide: (modalElement) => {
+                if (modalElement) modalElement.style.display = 'none';
+            },
+            hideAll: () => {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+        };
+    </script>
+    <script src="/src/scripts/i18n.js"></script>
+    <script src="/src/scripts/Web3Context.js"></script>
+    <script src="/src/scripts/main.js"></script>
+
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 1200px;
+            position: relative;
+        }
+
+        .wallet-options, .plan-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .wallet-option, .plan-card {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .wallet-option:hover, .plan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .wallet-option img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+
+        .plan-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 10px;
+        }
+
+        .plan-card {
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 200px;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-color: #28a745;
+        }
+
+        .plan-card h3 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .price {
+            font-size: 28px;
+            color: #28a745;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .select-plan-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .select-plan-btn:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+            }
+            
+            .plan-card {
+                flex: 1 1 100%;
+                max-width: none;
+            }
+        }
+
+        .confirmation-details {
+            margin: 20px 0;
+        }
+
+        .confirmation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+    </style>
+</body>
+</html> 
