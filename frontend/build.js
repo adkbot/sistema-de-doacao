@@ -16,29 +16,55 @@ async function copyFiles() {
         
         // Cria a pasta public/src
         console.log('📁 Criando diretório public/src...');
-        await fs.ensureDir(publicSrcDir);
+        await fs.ensureDir(path.join(publicSrcDir, 'scripts'));
+        await fs.ensureDir(path.join(publicSrcDir, 'styles'));
         
-        // Copia a pasta scripts
-        console.log('📝 Copiando scripts...');
-        await fs.copy(
-            path.join(srcDir, 'scripts'),
-            path.join(publicSrcDir, 'scripts')
-        );
-        
-        // Copia a pasta styles
-        console.log('🎨 Copiando estilos...');
-        await fs.copy(
-            path.join(srcDir, 'styles'),
-            path.join(publicSrcDir, 'styles')
-        );
+        // Lista todos os arquivos para copiar
+        const filesToCopy = [
+            {
+                src: path.join(srcDir, 'scripts', 'config.js'),
+                dest: path.join(publicSrcDir, 'scripts', 'config.js')
+            },
+            {
+                src: path.join(srcDir, 'scripts', 'Web3Context.js'),
+                dest: path.join(publicSrcDir, 'scripts', 'Web3Context.js')
+            },
+            {
+                src: path.join(srcDir, 'scripts', 'i18n.js'),
+                dest: path.join(publicSrcDir, 'scripts', 'i18n.js')
+            },
+            {
+                src: path.join(srcDir, 'scripts', 'main.js'),
+                dest: path.join(publicSrcDir, 'scripts', 'main.js')
+            },
+            {
+                src: path.join(srcDir, 'styles', 'main.css'),
+                dest: path.join(publicSrcDir, 'styles', 'main.css')
+            }
+        ];
 
-        // Verifica se os arquivos foram copiados
-        const files = await fs.readdir(publicSrcDir, { recursive: true });
-        console.log('📋 Arquivos copiados:', files);
+        // Copia cada arquivo
+        console.log('📝 Copiando arquivos...');
+        for (const file of filesToCopy) {
+            await fs.copy(file.src, file.dest);
+            console.log(`✅ Copiado: ${path.basename(file.src)}`);
+        }
+
+        // Verifica se todos os arquivos foram copiados
+        const scriptsFiles = await fs.readdir(path.join(publicSrcDir, 'scripts'));
+        const stylesFiles = await fs.readdir(path.join(publicSrcDir, 'styles'));
         
-        console.log('✅ Build concluído com sucesso!');
+        console.log('\n📋 Arquivos copiados:');
+        console.log('Scripts:', scriptsFiles);
+        console.log('Styles:', stylesFiles);
+        
+        if (scriptsFiles.length === 4 && stylesFiles.length === 1) {
+            console.log('\n✨ Build concluído com sucesso!');
+        } else {
+            throw new Error('Alguns arquivos não foram copiados corretamente');
+        }
     } catch (err) {
-        console.error('❌ Erro durante o build:', err);
+        console.error('\n❌ Erro durante o build:', err);
         process.exit(1);
     }
 }

@@ -107,4 +107,56 @@ const modal = {
 };
 
 // Inicializa elementos quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', initElements); 
+document.addEventListener('DOMContentLoaded', initElements);
+
+const CONFIG = {
+    // Endereço do contrato USDT na rede BSC Testnet
+    USDT_CONTRACT: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd',
+    
+    // Endereço do contrato de doação
+    DONATION_CONTRACT: '0x123...', // Substitua pelo endereço real do contrato
+    
+    // ABI do contrato USDT
+    USDT_ABI: [
+        {
+            "constant": true,
+            "inputs": [{"name": "_owner","type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"name": "balance","type": "uint256"}],
+            "type": "function"
+        },
+        {
+            "constant": false,
+            "inputs": [
+                {"name": "_to","type": "address"},
+                {"name": "_value","type": "uint256"}
+            ],
+            "name": "transfer",
+            "outputs": [{"name": "","type": "bool"}],
+            "type": "function"
+        },
+        {
+            "constant": true,
+            "inputs": [],
+            "name": "decimals",
+            "outputs": [{"name": "","type": "uint8"}],
+            "type": "function"
+        }
+    ],
+    
+    // Configurações da rede BSC Testnet
+    NETWORK: {
+        chainId: '0x61', // 97 em decimal
+        chainName: 'BSC Testnet',
+        nativeCurrency: {
+            name: 'BNB',
+            symbol: 'BNB',
+            decimals: 18
+        },
+        rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+        blockExplorerUrls: ['https://testnet.bscscan.com/']
+    }
+};
+
+// Exporta as configurações
+window.CONFIG = CONFIG; 
