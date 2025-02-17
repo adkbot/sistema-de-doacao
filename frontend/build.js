@@ -4,27 +4,47 @@ const path = require('path');
 // Função para copiar arquivos
 async function copyFiles() {
     try {
+        console.log('🚀 Iniciando processo de build...');
+        
+        const publicDir = path.join(__dirname, 'public');
+        const srcDir = path.join(__dirname, 'src');
+        const publicSrcDir = path.join(publicDir, 'src');
+
         // Limpa a pasta public/src se existir
-        await fs.remove(path.join(__dirname, 'public', 'src'));
+        console.log('🧹 Limpando diretório public/src...');
+        await fs.remove(publicSrcDir);
         
         // Cria a pasta public/src
-        await fs.ensureDir(path.join(__dirname, 'public', 'src'));
+        console.log('📁 Criando diretório public/src...');
+        await fs.ensureDir(publicSrcDir);
         
         // Copia a pasta scripts
+        console.log('📝 Copiando scripts...');
         await fs.copy(
-            path.join(__dirname, 'src', 'scripts'),
-            path.join(__dirname, 'public', 'src', 'scripts')
+            path.join(srcDir, 'scripts'),
+            path.join(publicSrcDir, 'scripts'),
+            { overwrite: true }
         );
         
         // Copia a pasta styles
+        console.log('🎨 Copiando estilos...');
         await fs.copy(
-            path.join(__dirname, 'src', 'styles'),
-            path.join(__dirname, 'public', 'src', 'styles')
+            path.join(srcDir, 'styles'),
+            path.join(publicSrcDir, 'styles'),
+            { overwrite: true }
         );
+
+        // Verifica se os arquivos foram copiados
+        const scriptsExist = await fs.pathExists(path.join(publicSrcDir, 'scripts'));
+        const stylesExist = await fs.pathExists(path.join(publicSrcDir, 'styles'));
+
+        if (!scriptsExist || !stylesExist) {
+            throw new Error('Falha ao copiar arquivos');
+        }
         
-        console.log('✅ Arquivos copiados com sucesso!');
+        console.log('✅ Build concluído com sucesso!');
     } catch (err) {
-        console.error('❌ Erro ao copiar arquivos:', err);
+        console.error('❌ Erro durante o build:', err);
         process.exit(1);
     }
 }

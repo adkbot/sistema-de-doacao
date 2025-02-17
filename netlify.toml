@@ -11,21 +11,8 @@
   for = "/*"
     [headers.values]
     Access-Control-Allow-Origin = "*"
-
-[[headers]]
-  for = "/*.js"
-    [headers.values]
-    Content-Type = "application/javascript"
-
-[[headers]]
-  for = "/*.css"
-    [headers.values]
-    Content-Type = "text/css"
-
-[[headers]]
-  for = "/*.html"
-    [headers.values]
-    Content-Type = "text/html; charset=UTF-8"
+    Cache-Control = "no-cache"
+    Pragma = "no-cache"
 
 [[headers]]
   for = "/src/*"

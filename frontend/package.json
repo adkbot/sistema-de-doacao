@@ -8,7 +8,8 @@
     "build": "node build.js",
     "dev": "nodemon ../server.js",
     "clean": "rimraf public/src",
-    "prebuild": "npm run clean"
+    "prebuild": "npm run clean",
+    "postbuild": "echo '✨ Build completado com sucesso!'"
   },
   "dependencies": {
     "express": "^4.17.1",
@@ -22,6 +23,7 @@
     "rimraf": "^3.0.2"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
   }
 } 
