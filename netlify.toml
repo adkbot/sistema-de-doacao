@@ -1,6 +1,7 @@
 [build]
-  command = "cd frontend && npm install && npm run build"
-  publish = "frontend/public"
+  base = "frontend"
+  publish = "public"
+  command = "npm install && npm run build"
 
 [[redirects]]
   from = "/*"
@@ -11,10 +12,20 @@
   for = "/*"
     [headers.values]
     Access-Control-Allow-Origin = "*"
-    Cache-Control = "no-cache"
-    Pragma = "no-cache"
 
 [[headers]]
-  for = "/src/*"
+  for = "/src/scripts/*"
     [headers.values]
-    Cache-Control = "public, max-age=31536000" 
+    Content-Type = "application/javascript"
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/src/styles/*"
+    [headers.values]
+    Content-Type = "text/css"
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.html"
+    [headers.values]
+    Content-Type = "text/html; charset=UTF-8" 

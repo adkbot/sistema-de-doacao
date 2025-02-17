@@ -4,13 +4,13 @@ const path = require('path');
 // Função para copiar arquivos
 async function copyFiles() {
     try {
-        console.log('🚀 Iniciando processo de build...');
+        console.log('🚀 Iniciando build...');
         
         const publicDir = path.join(__dirname, 'public');
         const srcDir = path.join(__dirname, 'src');
         const publicSrcDir = path.join(publicDir, 'src');
 
-        // Limpa a pasta public/src se existir
+        // Limpa a pasta public/src
         console.log('🧹 Limpando diretório public/src...');
         await fs.remove(publicSrcDir);
         
@@ -22,25 +22,19 @@ async function copyFiles() {
         console.log('📝 Copiando scripts...');
         await fs.copy(
             path.join(srcDir, 'scripts'),
-            path.join(publicSrcDir, 'scripts'),
-            { overwrite: true }
+            path.join(publicSrcDir, 'scripts')
         );
         
         // Copia a pasta styles
         console.log('🎨 Copiando estilos...');
         await fs.copy(
             path.join(srcDir, 'styles'),
-            path.join(publicSrcDir, 'styles'),
-            { overwrite: true }
+            path.join(publicSrcDir, 'styles')
         );
 
         // Verifica se os arquivos foram copiados
-        const scriptsExist = await fs.pathExists(path.join(publicSrcDir, 'scripts'));
-        const stylesExist = await fs.pathExists(path.join(publicSrcDir, 'styles'));
-
-        if (!scriptsExist || !stylesExist) {
-            throw new Error('Falha ao copiar arquivos');
-        }
+        const files = await fs.readdir(publicSrcDir, { recursive: true });
+        console.log('📋 Arquivos copiados:', files);
         
         console.log('✅ Build concluído com sucesso!');
     } catch (err) {
