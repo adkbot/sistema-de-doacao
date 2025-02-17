@@ -15,7 +15,8 @@
     "express": "^4.17.1",
     "web3": "^1.5.2",
     "fs-extra": "^11.2.0",
-    "jquery": "^3.6.0"
+    "jquery": "^3.6.0",
+    "jquery-i18n": "^1.0.7"
   },
   "devDependencies": {
     "nodemon": "^2.0.15",
@@ -24,5 +25,11 @@
   "engines": {
     "node": ">=14.0.0",
     "npm": ">=6.0.0"
-  }
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 } 
