@@ -73,16 +73,16 @@ const Web3Context = {
             });
 
             console.log('Contas recebidas:', accounts);
-            const chainId = await this.web3.eth.getChainId();
+            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
             console.log('Chain ID:', chainId);
             
-            // Verifica se estamos na Polygon mainnet (chainId: 137)
-            if (chainId.toString() !== '137') {
+            // Verifica se estamos na Polygon mainnet (chainId: 0x89)
+            if (chainId !== '0x89') {
                 console.log('Mudando para rede Polygon...');
                 try {
                     await window.ethereum.request({
                         method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x89' }], // 137 em hex
+                        params: [{ chainId: '0x89' }],
                     });
                 } catch (switchError) {
                     console.error('Erro ao mudar rede:', switchError);
@@ -112,12 +112,13 @@ const Web3Context = {
             }
 
             this.account = accounts[0];
-            this.chainId = chainId.toString();
+            this.chainId = chainId;
 
             // Registra o usuário se for novo
             if (!localStorage.getItem(`level_${this.account}`)) {
                 localStorage.setItem(`level_${this.account}`, '1');
                 localStorage.setItem(`donations_${this.account}`, '0');
+                localStorage.setItem(`total_received_${this.account}`, '0');
                 
                 // Verifica se tem referência na URL
                 const urlParams = new URLSearchParams(window.location.search);
@@ -130,6 +131,7 @@ const Web3Context = {
             }
 
             await this.updateNetworkStats(accounts[0]);
+            this.updateUI();
 
             utils.showSuccess('Carteira conectada com sucesso!');
             console.log('Conexão completa:', this.account);
@@ -172,9 +174,11 @@ const Web3Context = {
                 // Atualiza nível e doações recebidas
                 const userLevel = localStorage.getItem(`level_${account}`) || '1';
                 const donationsReceived = localStorage.getItem(`donations_${account}`) || '0';
+                const totalReceived = localStorage.getItem(`total_received_${account}`) || '0';
                 
                 document.getElementById('userLevel').textContent = userLevel;
                 document.getElementById('donationsReceived').textContent = `${donationsReceived}/10`;
+                document.getElementById('totalReceived').textContent = totalReceived;
             }
 
             // Atualiza a rede de usuários
@@ -191,8 +195,23 @@ const Web3Context = {
         if (!this.account) return;
 
         try {
-            const networkData = await this.getNetworkData();
             let totalUsers = 0;
+            let usersPerLevel = {1: 0, 2: 0, 3: 0};
+
+            // Conta usuários por nível
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('level_')) {
+                    const userAddress = key.replace('level_', '');
+                    const userLevel = parseInt(localStorage.getItem(key));
+                    const hasSponsor = localStorage.getItem(`sponsor_${userAddress}`);
+                    
+                    if (hasSponsor) {
+                        totalUsers++;
+                        usersPerLevel[userLevel] = (usersPerLevel[userLevel] || 0) + 1;
+                    }
+                }
+            }
 
             // Atualiza a interface para cada nível
             for (let level = 1; level <= 3; level++) {
@@ -201,39 +220,35 @@ const Web3Context = {
                 
                 usersDiv.innerHTML = ''; // Limpa o conteúdo anterior
 
-                // Busca todos os usuários que têm este nível
-                const usersInLevel = [];
+                // Busca usuários deste nível
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key.startsWith('level_')) {
                         const userAddress = key.replace('level_', '');
-                        const userLevel = localStorage.getItem(key);
-                        if (parseInt(userLevel) === level) {
-                            usersInLevel.push(userAddress);
-                            totalUsers++;
+                        const userLevel = parseInt(localStorage.getItem(key));
+                        const hasSponsor = localStorage.getItem(`sponsor_${userAddress}`);
+                        
+                        if (userLevel === level && hasSponsor) {
+                            const userElement = document.createElement('div');
+                            userElement.className = 'user-address';
+                            userElement.textContent = utils.formatAddress(userAddress);
+                            userElement.title = userAddress;
+                            userElement.onclick = () => {
+                                window.open(`https://polygonscan.com/address/${userAddress}`, '_blank');
+                            };
+                            usersDiv.appendChild(userElement);
                         }
                     }
                 }
 
-                if (usersInLevel.length > 0) {
-                    usersInLevel.forEach(address => {
-                        const userElement = document.createElement('div');
-                        userElement.className = 'user-address';
-                        userElement.textContent = utils.formatAddress(address);
-                        userElement.title = address;
-                        userElement.onclick = () => {
-                            window.open(`https://polygonscan.com/address/${address}`, '_blank');
-                        };
-                        usersDiv.appendChild(userElement);
-                    });
-                } else {
+                if (usersDiv.children.length === 0) {
                     usersDiv.innerHTML = '<em>Nenhum usuário neste nível</em>';
                 }
             }
 
-            // Atualiza total de usuários
+            // Atualiza contadores
             document.getElementById('totalUsers').textContent = totalUsers;
-            document.getElementById('networkLevels').textContent = totalUsers;
+            document.getElementById('networkLevels').textContent = Object.values(usersPerLevel).reduce((a, b) => a + b, 0);
 
             // Atualiza nome da rede
             const networkName = this.getNetworkName(this.chainId);
@@ -242,35 +257,6 @@ const Web3Context = {
         } catch (error) {
             console.error('Erro ao atualizar rede de usuários:', error);
         }
-    },
-
-    // Busca dados da rede
-    async getNetworkData() {
-        const networkData = {
-            1: [], // Nível 1
-            2: [], // Nível 2
-            3: []  // Nível 3
-        };
-
-        // Busca todos os usuários do localStorage
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            
-            if (key.startsWith('level_')) {
-                const userAddress = key.replace('level_', '');
-                const userLevel = parseInt(localStorage.getItem(key));
-                
-                // Verifica se o usuário tem patrocinador
-                const sponsorKey = `sponsor_${userAddress}`;
-                const sponsor = localStorage.getItem(sponsorKey);
-                
-                if (sponsor) {
-                    networkData[userLevel].push(userAddress);
-                }
-            }
-        }
-
-        return networkData;
     },
 
     // Assina transação
