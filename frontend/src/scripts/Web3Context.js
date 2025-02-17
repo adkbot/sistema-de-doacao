@@ -113,6 +113,22 @@ const Web3Context = {
 
             this.account = accounts[0];
             this.chainId = chainId.toString();
+
+            // Registra o usuário se for novo
+            if (!localStorage.getItem(`level_${this.account}`)) {
+                localStorage.setItem(`level_${this.account}`, '1');
+                localStorage.setItem(`donations_${this.account}`, '0');
+                
+                // Verifica se tem referência na URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const ref = urlParams.get('ref');
+                
+                if (ref && this.isValidAddress(ref) && ref !== this.account) {
+                    localStorage.setItem(`sponsor_${this.account}`, ref);
+                    console.log('Patrocinador registrado:', ref);
+                }
+            }
+
             await this.updateNetworkStats(accounts[0]);
 
             utils.showSuccess('Carteira conectada com sucesso!');
@@ -142,11 +158,24 @@ const Web3Context = {
             // Busca saldo USDT da pool
             const poolBalance = await usdtContract.methods.balanceOf(config.poolAddress).call();
             // Converte de 6 decimais para formato legível
-            this.networkTotal = (Number(poolBalance) / (10 ** 6)).toString();
+            this.networkTotal = (Number(poolBalance) / (10 ** 6)).toFixed(2);
 
             // Atualiza a interface
             document.getElementById('poolBalance').textContent = this.networkTotal;
             document.getElementById('poolBalance').nextElementSibling.textContent = 'USDT';
+
+            // Busca saldo do usuário
+            if (account) {
+                const userBalance = await usdtContract.methods.balanceOf(account).call();
+                this.totalReceived = (Number(userBalance) / (10 ** 6)).toFixed(2);
+                
+                // Atualiza nível e doações recebidas
+                const userLevel = localStorage.getItem(`level_${account}`) || '1';
+                const donationsReceived = localStorage.getItem(`donations_${account}`) || '0';
+                
+                document.getElementById('userLevel').textContent = userLevel;
+                document.getElementById('donationsReceived').textContent = `${donationsReceived}/10`;
+            }
 
             // Atualiza a rede de usuários
             await this.updateUserNetwork();
@@ -162,12 +191,14 @@ const Web3Context = {
         if (!this.account) return;
 
         try {
-            // Simula busca de usuários da rede (em produção, isso viria do backend)
             const networkData = await this.getNetworkData();
+            let totalUsers = 0;
 
             // Atualiza a interface para cada nível
             for (let level = 1; level <= 3; level++) {
                 const usersDiv = document.getElementById(`level${level}Users`);
+                if (!usersDiv) continue;
+                
                 usersDiv.innerHTML = ''; // Limpa o conteúdo anterior
 
                 if (networkData[level] && networkData[level].length > 0) {
@@ -180,35 +211,42 @@ const Web3Context = {
                             window.open(`https://polygonscan.com/address/${address}`, '_blank');
                         };
                         usersDiv.appendChild(userElement);
+                        totalUsers++;
                     });
                 } else {
                     usersDiv.innerHTML = '<em>Nenhum usuário neste nível</em>';
                 }
             }
+
+            // Atualiza total de usuários
+            document.getElementById('totalUsers').textContent = totalUsers;
+            document.getElementById('networkLevels').textContent = Object.values(networkData).flat().length;
+
         } catch (error) {
             console.error('Erro ao atualizar rede de usuários:', error);
         }
     },
 
-    // Busca dados da rede (simulado - em produção, isso viria do backend)
+    // Busca dados da rede
     async getNetworkData() {
-        // Aqui você implementaria a chamada real ao backend
-        // Por enquanto, vamos simular alguns dados
         const networkData = {
             1: [], // Nível 1
             2: [], // Nível 2
             3: []  // Nível 3
         };
 
-        // Busca usuários do localStorage
+        // Busca todos os usuários do localStorage
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
+            
+            // Verifica patrocinadores
             if (key.startsWith('sponsor_')) {
                 const userAddress = key.replace('sponsor_', '');
                 const sponsor = localStorage.getItem(key);
                 
                 if (sponsor === this.account) {
-                    networkData[1].push(userAddress);
+                    const userLevel = localStorage.getItem(`level_${userAddress}`) || '1';
+                    networkData[parseInt(userLevel)].push(userAddress);
                 }
             }
         }

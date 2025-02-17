@@ -77,6 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     utils.showLoading(button);
                     const amount = button.dataset.amount;
 
+                    // Verifica se tem patrocinador
+                    const sponsor = localStorage.getItem(`sponsor_${Web3Context.account}`);
+                    if (!sponsor) {
+                        throw new Error('Você precisa de um patrocinador para fazer doações');
+                    }
+
                     // Inicializa contrato USDT
                     const usdtContract = new Web3Context.web3.eth.Contract(USDT_ABI, config.usdtAddress);
                     
@@ -95,6 +101,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
 
                     if (tx && tx.transactionHash) {
+                        // Atualiza informações do usuário
+                        const currentDonations = parseInt(localStorage.getItem(`donations_${Web3Context.account}`) || '0');
+                        const currentLevel = parseInt(localStorage.getItem(`level_${Web3Context.account}`) || '1');
+                        
+                        // Incrementa doações
+                        const newDonations = currentDonations + 1;
+                        localStorage.setItem(`donations_${Web3Context.account}`, newDonations.toString());
+                        
+                        // Verifica se deve subir de nível
+                        if (newDonations >= 10) {
+                            const newLevel = Math.min(currentLevel + 1, 3);
+                            localStorage.setItem(`level_${Web3Context.account}`, newLevel.toString());
+                            localStorage.setItem(`donations_${Web3Context.account}`, '0');
+                            
+                            utils.showSuccess(`Parabéns! Você avançou para o nível ${newLevel}!`);
+                        }
+
+                        // Registra a transação
+                        const txKey = `tx_${tx.transactionHash}`;
+                        localStorage.setItem(txKey, JSON.stringify({
+                            from: Web3Context.account,
+                            to: config.poolAddress,
+                            amount: amount,
+                            sponsor: sponsor,
+                            timestamp: Date.now()
+                        }));
+                        
                         utils.showSuccess('Doação de ' + amount + ' USDT realizada com sucesso!');
                         await Web3Context.updateNetworkStats(Web3Context.account);
                     } else {
