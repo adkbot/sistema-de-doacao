@@ -5,10 +5,20 @@
   "main": "src/scripts/main.js",
   "scripts": {
     "start": "node ../server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node build.js",
+    "dev": "nodemon ../server.js",
+    "clean": "rimraf public/src",
+    "prebuild": "npm run clean"
   },
   "dependencies": {
     "express": "^4.17.1",
-    "web3": "^1.5.2"
+    "web3": "^1.5.2",
+    "fs-extra": "^11.2.0",
+    "jquery": "^3.6.0",
+    "jquery-i18n": "^1.0.7"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15",
+    "rimraf": "^3.0.2"
   }
 } 
