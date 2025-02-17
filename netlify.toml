@@ -1,6 +1,6 @@
 [build]
   publish = "frontend/public"
-  command = "# no build command"
+  command = ""
 
 [[redirects]]
   from = "/*"
@@ -10,4 +10,5 @@
 [[headers]]
   for = "/*"
     [headers.values]
-    Access-Control-Allow-Origin = "*" 
+    Access-Control-Allow-Origin = "*"
+    Content-Type = "text/html; charset=UTF-8" 
