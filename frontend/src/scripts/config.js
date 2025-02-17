@@ -2,7 +2,7 @@
 const config = {
     poolAddress: '0xa477E1a3F20E0fE460d1fb48cD8323248D3C42DD',
     usdtAddress: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
-    requiredNetwork: 137,
+    requiredNetwork: '0x89',
     chainConfig: {
         chainId: '0x89',
         chainName: 'Polygon Mainnet',
@@ -19,20 +19,34 @@ const config = {
 // ABI do contrato USDT
 const USDT_ABI = [
     {
+        "constant": true,
+        "inputs": [{"name": "_owner","type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance","type": "uint256"}],
+        "type": "function"
+    },
+    {
         "constant": false,
         "inputs": [
-            {"name": "_to", "type": "address"},
-            {"name": "_value", "type": "uint256"}
+            {"name": "_to","type": "address"},
+            {"name": "_value","type": "uint256"}
         ],
         "name": "transfer",
-        "outputs": [{"name": "", "type": "bool"}],
+        "outputs": [{"name": "","type": "bool"}],
         "type": "function"
     },
     {
         "constant": true,
-        "inputs": [{"name": "_owner", "type": "address"}],
-        "name": "balanceOf",
-        "outputs": [{"name": "balance", "type": "uint256"}],
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "","type": "uint8"}],
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{"name": "","type": "string"}],
         "type": "function"
     }
 ];
@@ -159,4 +173,6 @@ const CONFIG = {
 };
 
 // Exporta as configurações
-window.CONFIG = CONFIG; 
+window.CONFIG = CONFIG;
+window.config = config;
+window.USDT_ABI = USDT_ABI; 

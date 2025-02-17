@@ -158,33 +158,56 @@ const Web3Context = {
             const usdtContract = new this.web3.eth.Contract(USDT_ABI, config.usdtAddress);
             
             // Busca saldo USDT da pool
-            const poolBalance = await usdtContract.methods.balanceOf(config.poolAddress).call();
-            // Converte de 6 decimais para formato legível
-            this.networkTotal = (Number(poolBalance) / (10 ** 6)).toFixed(2);
+            try {
+                console.log('Buscando saldo da pool:', config.poolAddress);
+                const poolBalance = await usdtContract.methods.balanceOf(config.poolAddress).call();
+                console.log('Saldo bruto da pool:', poolBalance);
+                
+                // Converte de 6 decimais para formato legível
+                this.networkTotal = (Number(poolBalance) / (10 ** 6)).toFixed(2);
+                console.log('Saldo formatado da pool:', this.networkTotal);
 
-            // Atualiza a interface
-            document.getElementById('poolBalance').textContent = this.networkTotal;
-            document.getElementById('poolBalance').nextElementSibling.textContent = 'USDT';
+                // Atualiza a interface
+                const poolBalanceElement = document.getElementById('poolBalance');
+                if (poolBalanceElement) {
+                    poolBalanceElement.textContent = this.networkTotal;
+                    poolBalanceElement.nextElementSibling.textContent = 'USDT';
+                } else {
+                    console.error('Elemento poolBalance não encontrado');
+                }
+            } catch (error) {
+                console.error('Erro ao buscar saldo da pool:', error);
+                this.networkTotal = '0.00';
+                document.getElementById('poolBalance').textContent = this.networkTotal;
+            }
 
             // Busca saldo do usuário
             if (account) {
-                const userBalance = await usdtContract.methods.balanceOf(account).call();
-                this.totalReceived = (Number(userBalance) / (10 ** 6)).toFixed(2);
-                
-                // Atualiza nível e doações recebidas
-                const userLevel = localStorage.getItem(`level_${account}`) || '1';
-                const donationsReceived = localStorage.getItem(`donations_${account}`) || '0';
-                const totalReceived = localStorage.getItem(`total_received_${account}`) || '0';
-                
-                document.getElementById('userLevel').textContent = userLevel;
-                document.getElementById('donationsReceived').textContent = `${donationsReceived}/10`;
-                document.getElementById('totalReceived').textContent = totalReceived;
+                try {
+                    console.log('Buscando saldo do usuário:', account);
+                    const userBalance = await usdtContract.methods.balanceOf(account).call();
+                    console.log('Saldo bruto do usuário:', userBalance);
+                    
+                    this.totalReceived = (Number(userBalance) / (10 ** 6)).toFixed(2);
+                    console.log('Saldo formatado do usuário:', this.totalReceived);
+                    
+                    // Atualiza nível e doações recebidas
+                    const userLevel = localStorage.getItem(`level_${account}`) || '1';
+                    const donationsReceived = localStorage.getItem(`donations_${account}`) || '0';
+                    const totalReceived = localStorage.getItem(`total_received_${account}`) || '0';
+                    
+                    document.getElementById('userLevel').textContent = userLevel;
+                    document.getElementById('donationsReceived').textContent = `${donationsReceived}/10`;
+                    document.getElementById('totalReceived').textContent = this.totalReceived;
+                } catch (error) {
+                    console.error('Erro ao buscar saldo do usuário:', error);
+                }
             }
 
             // Atualiza a rede de usuários
             await this.updateUserNetwork();
 
-            console.log('Estatísticas atualizadas');
+            console.log('Estatísticas atualizadas com sucesso');
         } catch (error) {
             console.error('Erro ao atualizar estatísticas:', error);
         }
