@@ -368,49 +368,82 @@ button:hover {
 }
 
 .plan-card {
-    background: white;
+    background: #fff;
     border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 24px;
     text-align: center;
     transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 200px;
-    width: 300px;
-    margin: 0 auto;
-}
-
-.plan-card h3 {
-    font-size: 24px;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-.plan-card .price {
-    font-size: 28px;
-    color: #28a745;
-    font-weight: bold;
-    margin: 15px 0;
-}
-
-.plan-card .select-plan-btn {
     width: 100%;
-    padding: 12px;
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s ease;
+    max-width: 400px;
+    margin: 0 auto;
 }
 
 .plan-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     border-color: #28a745;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.plan-card h3 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.plan-card .price {
+    font-size: 32px;
+    color: #28a745;
+    font-weight: bold;
+    margin: 20px 0;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.plan-features li {
+    padding: 8px 0;
+    color: #666;
+    font-size: 16px;
+}
+
+.select-plan-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.select-plan-btn:hover {
+    background: #218838;
+    transform: scale(1.02);
+}
+
+.modal-content {
+    background: #fff;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 500px;
+    margin: 30px auto;
+    position: relative;
+}
+
+.modal-content h2 {
+    color: #333;
+    font-size: 28px;
+    margin-bottom: 25px;
+    text-align: center;
 }
 
 @media (max-width: 1200px) {
@@ -598,4 +631,37 @@ main {
 .stat-card .label {
     color: #666;
     font-size: 0.9em;
+}
+
+.action-button {
+    background: #28a745;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    background: #218838;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.rotating-globe {
+    display: inline-block;
+    animation: rotate 3s linear infinite;
 } 

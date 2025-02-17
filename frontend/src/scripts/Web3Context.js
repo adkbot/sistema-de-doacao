@@ -265,7 +265,15 @@ const Web3Context = {
             const poolBalanceElement = document.getElementById('poolBalance');
             if (poolBalanceElement) {
                 poolBalanceElement.textContent = this.networkTotal;
+                // Força atualização do texto USDT
+                const usdtSpan = poolBalanceElement.nextElementSibling;
+                if (usdtSpan) {
+                    usdtSpan.textContent = 'USDT';
+                }
             }
+
+            // Atualiza a cada 30 segundos
+            setTimeout(() => this.updateNetworkStats(account), 30000);
 
             // Contagem de usuários e níveis
             let totalUsers = 0;

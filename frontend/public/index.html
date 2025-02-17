@@ -23,7 +23,7 @@
 </head>
 <body>
     <header>
-        <h1 id="title">🌎 ADK Donation System</h1>
+        <h1 id="title"><span class="rotating-globe">🌎</span> ADK Donation System</h1>
         <nav class="main-nav">
             <button class="nav-btn active" data-page="dashboard">📊 Dashboard</button>
             <button class="nav-btn" data-page="network">🌐 Rede</button>
@@ -48,14 +48,13 @@
                 <p><strong data-i18n="wallet_connected">Carteira Conectada:</strong> <span id="walletAddress">Desconectado</span></p>
                 <p><strong>Status:</strong> <span id="userStatus" class="status-inactive">Inativo</span></p>
                 <p><strong data-i18n="pool_balance">Saldo da Pool:</strong> <span id="poolBalance">0</span> <span>USDT</span></p>
-                <p><strong>Seu Saldo:</strong> <span id="userBalance">0</span> <span>USDT</span></p>
             </section>
 
             <section id="donationSystem">
                 <h2 data-i18n="donation_system">💰 Sistema de Doação</h2>
                 <p><strong data-i18n="current_level">Nível Atual:</strong> <span id="userLevel">1</span></p>
                 <p><strong data-i18n="donations_received">Doações Recebidas:</strong> <span id="donationsReceived">0</span> / 10</p>
-                <button id="donate">💰 <span data-i18n="make_donation">Fazer Doação</span></button>
+                <button id="donate" class="action-button">💰 <span data-i18n="make_donation">Fazer Doação</span></button>
             </section>
 
             <section id="networkStatus">
@@ -148,12 +147,18 @@
         <div id="planModal" class="modal">
             <div class="modal-content">
                 <button class="close-modal">&times;</button>
-                <h2 data-i18n="select_plan">Escolha seu Plano</h2>
+                <h2>Fazer Doação</h2>
                 <div class="plan-options">
                     <div class="plan-card" data-plan="start">
-                        <h3>Start</h3>
+                        <h3>Plano Start</h3>
                         <p class="price">20 USDT</p>
-                        <button class="select-plan-btn" data-amount="20">Selecionar</button>
+                        <ul class="plan-features">
+                            <li>✅ Ativação no Sistema</li>
+                            <li>✅ Acesso à Rede</li>
+                            <li>✅ Link de Convite</li>
+                            <li>✅ Comissões por Indicação</li>
+                        </ul>
+                        <button class="select-plan-btn" data-amount="20">Selecionar e Pagar</button>
                     </div>
                 </div>
             </div>
