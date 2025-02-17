@@ -46,8 +46,9 @@
             <section id="dashboard">
                 <h2 data-i18n="dashboard">📊 Dashboard</h2>
                 <p><strong data-i18n="wallet_connected">Carteira Conectada:</strong> <span id="walletAddress">Desconectado</span></p>
+                <p><strong>Status:</strong> <span id="userStatus" class="status-inactive">Inativo</span></p>
                 <p><strong data-i18n="pool_balance">Saldo da Pool:</strong> <span id="poolBalance">0</span> <span>USDT</span></p>
-                <p><strong data-i18n="arbitrage_status">Status da Arbitragem:</strong> <span id="arbitrageStatus">Aguardando...</span></p>
+                <p><strong>Seu Saldo:</strong> <span id="userBalance">0</span> <span>USDT</span></p>
             </section>
 
             <section id="donationSystem">
@@ -55,6 +56,27 @@
                 <p><strong data-i18n="current_level">Nível Atual:</strong> <span id="userLevel">1</span></p>
                 <p><strong data-i18n="donations_received">Doações Recebidas:</strong> <span id="donationsReceived">0</span> / 10</p>
                 <button id="donate">💰 <span data-i18n="make_donation">Fazer Doação</span></button>
+            </section>
+
+            <section id="networkStatus">
+                <h2>📊 Estatísticas da Rede</h2>
+                <p><strong>Total de Usuários:</strong> <span id="totalUsers">0</span></p>
+                <p><strong>Usuários Ativos:</strong> <span id="activeUsers">0</span></p>
+                <p><strong>Usuários por Nível:</strong> <span id="networkLevels">Nível 1: 0 | Nível 2: 0 | Nível 3: 0</span></p>
+            </section>
+
+            <section id="commissions">
+                <h2>💎 Suas Comissões</h2>
+                <p><strong>Total de Referidos:</strong> <span id="totalReferrals">0</span></p>
+                <p><strong>Comissões Ganhas:</strong> <span id="totalCommissions">0</span> USDT</p>
+                <div class="link-container">
+                    <p><strong>Seu Link de Convite:</strong></p>
+                    <div class="copy-link">
+                        <input type="text" id="userReferralLink" readonly>
+                        <button id="copyUserLink" onclick="utils.copyToClipboard('userReferralLink')">📋 Copiar</button>
+                    </div>
+                </div>
+                <p><strong>Seu Patrocinador:</strong> <span id="sponsorAddress">-</span></p>
             </section>
         </div>
 
