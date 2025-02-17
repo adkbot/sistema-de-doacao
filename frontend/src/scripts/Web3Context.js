@@ -201,8 +201,22 @@ const Web3Context = {
                 
                 usersDiv.innerHTML = ''; // Limpa o conteúdo anterior
 
-                if (networkData[level] && networkData[level].length > 0) {
-                    networkData[level].forEach(address => {
+                // Busca todos os usuários que têm este nível
+                const usersInLevel = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith('level_')) {
+                        const userAddress = key.replace('level_', '');
+                        const userLevel = localStorage.getItem(key);
+                        if (parseInt(userLevel) === level) {
+                            usersInLevel.push(userAddress);
+                            totalUsers++;
+                        }
+                    }
+                }
+
+                if (usersInLevel.length > 0) {
+                    usersInLevel.forEach(address => {
                         const userElement = document.createElement('div');
                         userElement.className = 'user-address';
                         userElement.textContent = utils.formatAddress(address);
@@ -211,7 +225,6 @@ const Web3Context = {
                             window.open(`https://polygonscan.com/address/${address}`, '_blank');
                         };
                         usersDiv.appendChild(userElement);
-                        totalUsers++;
                     });
                 } else {
                     usersDiv.innerHTML = '<em>Nenhum usuário neste nível</em>';
@@ -220,7 +233,11 @@ const Web3Context = {
 
             // Atualiza total de usuários
             document.getElementById('totalUsers').textContent = totalUsers;
-            document.getElementById('networkLevels').textContent = Object.values(networkData).flat().length;
+            document.getElementById('networkLevels').textContent = totalUsers;
+
+            // Atualiza nome da rede
+            const networkName = this.getNetworkName(this.chainId);
+            document.getElementById('userNetwork').textContent = networkName;
 
         } catch (error) {
             console.error('Erro ao atualizar rede de usuários:', error);
@@ -239,14 +256,16 @@ const Web3Context = {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             
-            // Verifica patrocinadores
-            if (key.startsWith('sponsor_')) {
-                const userAddress = key.replace('sponsor_', '');
-                const sponsor = localStorage.getItem(key);
+            if (key.startsWith('level_')) {
+                const userAddress = key.replace('level_', '');
+                const userLevel = parseInt(localStorage.getItem(key));
                 
-                if (sponsor === this.account) {
-                    const userLevel = localStorage.getItem(`level_${userAddress}`) || '1';
-                    networkData[parseInt(userLevel)].push(userAddress);
+                // Verifica se o usuário tem patrocinador
+                const sponsorKey = `sponsor_${userAddress}`;
+                const sponsor = localStorage.getItem(sponsorKey);
+                
+                if (sponsor) {
+                    networkData[userLevel].push(userAddress);
                 }
             }
         }
@@ -322,11 +341,11 @@ const Web3Context = {
     // Obtém o nome da rede
     getNetworkName(chainId) {
         const networks = {
-            '1': 'Ethereum Mainnet',
-            '137': 'Polygon Mainnet',
-            '80001': 'Polygon Mumbai'
+            '0x1': 'Ethereum Mainnet',
+            '0x89': 'Polygon Mainnet',
+            '0x13881': 'Polygon Mumbai'
         };
-        return networks[chainId] || 'Rede Desconhecida';
+        return networks[chainId] || 'Polygon Mainnet';
     }
 };
 
