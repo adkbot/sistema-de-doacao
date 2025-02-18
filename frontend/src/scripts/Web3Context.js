@@ -178,18 +178,35 @@ const Web3Context = {
                 .then(accounts => {
                     if (accounts.length > 0) {
                         this.account = accounts[0];
-                        this.updateNetworkStats(accounts[0]);
-                        this.updateUI();
                         console.log('Conta conectada:', this.account);
+                        
+                        // Obtém o chainId atual
+                        window.ethereum.request({ method: 'eth_chainId' })
+                            .then(chainId => {
+                                console.log('Chain ID atual:', chainId);
+                                this.chainId = chainId;
+                                this.updateUI();
+                                this.updateUserNetwork();
+                            })
+                            .catch(error => {
+                                console.error('Erro ao obter chainId:', error);
+                                this.updateUI();
+                                this.updateUserNetwork();
+                            });
                     }
                 })
-                .catch(console.error);
+                .catch(error => {
+                    console.error('Erro ao verificar contas:', error);
+                    utils.showError('Erro ao conectar com a carteira');
+                });
 
             // Listeners de eventos atualizados
             window.ethereum.on('disconnect', (error) => {
                 console.log('Carteira desconectada:', error);
                 this.account = '';
+                this.chainId = null;
                 this.updateUI();
+                this.updateUserNetwork();
                 utils.showError('Carteira desconectada');
             });
 
@@ -197,13 +214,15 @@ const Web3Context = {
                 console.log('Contas alteradas:', accounts);
                 if (accounts.length > 0) {
                     this.account = accounts[0];
-                    this.updateNetworkStats(accounts[0]);
+                    this.updateUI();
+                    this.updateUserNetwork();
                     utils.showSuccess('Conta alterada com sucesso');
                 } else {
                     this.account = '';
+                    this.updateUI();
+                    this.updateUserNetwork();
                     utils.showError('Carteira desconectada');
                 }
-                this.updateUI();
             });
 
             window.ethereum.on('chainChanged', (newChainId) => {
@@ -216,7 +235,7 @@ const Web3Context = {
                     utils.showSuccess('Rede Polygon conectada');
                 }
                 this.updateUI();
-                this.updateNetworkStats(this.account);
+                this.updateUserNetwork();
             });
 
             // Verifica a rede atual
@@ -252,8 +271,16 @@ const Web3Context = {
 
     // Verifica se a rede é válida
     isValidNetwork(chainId) {
-        // Aceita tanto formato hexadecimal (0x89) quanto decimal (137)
-        return chainId === '0x89' || chainId === '137' || parseInt(chainId) === 137;
+        if (!chainId) return false;
+        
+        // Lista de redes válidas (Polygon Mainnet e Mumbai)
+        const validNetworks = ['0x89', '0x13881', '137'];
+        
+        console.log('Verificando rede:', chainId);
+        const isValid = validNetworks.includes(chainId);
+        console.log('Rede válida?', isValid);
+        
+        return isValid;
     },
 
     // Conecta à carteira
@@ -290,10 +317,7 @@ const Web3Context = {
             if (!this.isValidNetwork(chainId)) {
                 console.log('Mudando para rede Polygon...');
                 try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x89' }],
-                    });
+                    await this.switchToPolygon();
                 } catch (switchError) {
                     console.error('Erro ao mudar rede:', switchError);
                     if (switchError.code === 4902) {
@@ -480,70 +504,84 @@ const Web3Context = {
 
     // Atualiza a rede de usuários
     async updateUserNetwork() {
-        if (!this.account) return;
+        if (!this.account) {
+            console.log('Carteira não conectada, atualizando UI com valores padrão');
+            document.getElementById('userNetwork').textContent = 'Desconectado';
+            document.getElementById('totalUsers').textContent = '0';
+            document.getElementById('networkLevels').textContent = 'Nível 1: 0 | Nível 2: 0 | Nível 3: 0';
+            return;
+        }
 
         try {
+            console.log('Atualizando rede do usuário para:', this.account);
+            
+            // Atualiza nome da rede
+            const networkName = this.getNetworkName(this.chainId);
+            console.log('Nome da rede:', networkName);
+            document.getElementById('userNetwork').textContent = networkName;
+
             let totalUsers = 0;
             let usersPerLevel = {1: 0, 2: 0, 3: 0};
+            let networkUsers = [];
 
-            // Conta usuários por nível
+            // Busca usuários da rede
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key.startsWith('level_')) {
                     const userAddress = key.replace('level_', '');
                     const userLevel = parseInt(localStorage.getItem(key));
-                    const hasSponsor = localStorage.getItem(`sponsor_${userAddress}`);
+                    const userSponsor = localStorage.getItem(`sponsor_${userAddress}`);
                     
-                    if (hasSponsor) {
-                        totalUsers++;
+                    if (userSponsor === this.account) {
+                        networkUsers.push({
+                            address: userAddress,
+                            level: userLevel
+                        });
                         usersPerLevel[userLevel] = (usersPerLevel[userLevel] || 0) + 1;
+                        totalUsers++;
                     }
                 }
             }
 
+            console.log('Total de usuários encontrados:', totalUsers);
+            console.log('Usuários por nível:', usersPerLevel);
+
             // Atualiza a interface para cada nível
             for (let level = 1; level <= 3; level++) {
                 const usersDiv = document.getElementById(`level${level}Users`);
-                if (!usersDiv) continue;
+                if (!usersDiv) {
+                    console.log(`Elemento level${level}Users não encontrado`);
+                    continue;
+                }
                 
                 usersDiv.innerHTML = ''; // Limpa o conteúdo anterior
-
-                // Busca usuários deste nível
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key.startsWith('level_')) {
-                        const userAddress = key.replace('level_', '');
-                        const userLevel = parseInt(localStorage.getItem(key));
-                        const hasSponsor = localStorage.getItem(`sponsor_${userAddress}`);
-                        
-                        if (userLevel === level && hasSponsor) {
-                            const userElement = document.createElement('div');
-                            userElement.className = 'user-address';
-                            userElement.textContent = utils.formatAddress(userAddress);
-                            userElement.title = userAddress;
-                            userElement.onclick = () => {
-                                window.open(`https://polygonscan.com/address/${userAddress}`, '_blank');
-                            };
-                            usersDiv.appendChild(userElement);
-                        }
-                    }
-                }
-
-                if (usersDiv.children.length === 0) {
+                
+                const levelUsers = networkUsers.filter(user => user.level === level);
+                
+                if (levelUsers.length > 0) {
+                    levelUsers.forEach(user => {
+                        const userElement = document.createElement('div');
+                        userElement.className = 'user-address';
+                        userElement.textContent = utils.formatAddress(user.address);
+                        userElement.title = user.address;
+                        userElement.onclick = () => {
+                            window.open(`https://polygonscan.com/address/${user.address}`, '_blank');
+                        };
+                        usersDiv.appendChild(userElement);
+                    });
+                } else {
                     usersDiv.innerHTML = '<em>Nenhum usuário neste nível</em>';
                 }
             }
 
             // Atualiza contadores
             document.getElementById('totalUsers').textContent = totalUsers;
-            document.getElementById('networkLevels').textContent = Object.values(usersPerLevel).reduce((a, b) => a + b, 0);
-
-            // Atualiza nome da rede
-            const networkName = this.getNetworkName(this.chainId);
-            document.getElementById('userNetwork').textContent = networkName;
+            document.getElementById('networkLevels').textContent = 
+                `Nível 1: ${usersPerLevel[1]} | Nível 2: ${usersPerLevel[2]} | Nível 3: ${usersPerLevel[3]}`;
 
         } catch (error) {
             console.error('Erro ao atualizar rede de usuários:', error);
+            utils.showError('Erro ao atualizar informações da rede');
         }
     },
 
@@ -718,12 +756,18 @@ const Web3Context = {
 
     // Obtém o nome da rede
     getNetworkName(chainId) {
+        if (!chainId) return 'Rede Desconhecida';
+        
         const networks = {
             '0x1': 'Ethereum Mainnet',
             '0x89': 'Polygon Mainnet',
-            '0x13881': 'Polygon Mumbai'
+            '0x13881': 'Polygon Mumbai',
+            '137': 'Polygon Mainnet'
         };
-        return networks[chainId] || 'Polygon Mainnet';
+        
+        const networkName = networks[chainId] || 'Rede Desconhecida';
+        console.log('Chain ID:', chainId, 'Network Name:', networkName);
+        return networkName;
     },
 
     // Verifica comissões do usuário
@@ -797,6 +841,43 @@ const Web3Context = {
         } catch (err) {
             console.error('Erro no fallback de cópia:', err);
             utils.showError('Não foi possível copiar o link');
+        }
+    },
+
+    async switchToPolygon() {
+        try {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x89' }], // Polygon Mainnet
+            });
+            return true;
+        } catch (error) {
+            if (error.code === 4902) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0x89',
+                            chainName: 'Polygon Mainnet',
+                            nativeCurrency: {
+                                name: 'MATIC',
+                                symbol: 'MATIC',
+                                decimals: 18
+                            },
+                            rpcUrls: ['https://polygon-rpc.com/'],
+                            blockExplorerUrls: ['https://polygonscan.com/']
+                        }]
+                    });
+                    return true;
+                } catch (addError) {
+                    console.error('Erro ao adicionar rede Polygon:', addError);
+                    utils.showError('Erro ao adicionar rede Polygon');
+                    return false;
+                }
+            }
+            console.error('Erro ao trocar para rede Polygon:', error);
+            utils.showError('Erro ao trocar para rede Polygon');
+            return false;
         }
     }
 };
