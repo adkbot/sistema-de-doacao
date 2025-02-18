@@ -600,143 +600,56 @@ const Web3Context = {
 
     // Atualiza a interface
     updateUI() {
-        console.log('Iniciando atualização da UI...');
-
+        console.log('Atualizando UI com conta:', this.account);
+        
         const safeUpdateElement = (id, value, property = 'innerText') => {
             const element = document.getElementById(id);
-            if (!element) {
-                console.warn(`Elemento ${id} não encontrado`);
-                return false;
-            }
-            try {
-                if (property === 'value') {
+            if (element) {
+                if (property === 'value' && element.tagName === 'INPUT') {
                     element.value = value;
                 } else {
                     element[property] = value;
                 }
-                console.log(`Elemento ${id} atualizado com sucesso:`, value);
-                return true;
-            } catch (error) {
-                console.error(`Erro ao atualizar elemento ${id}:`, error);
-                return false;
             }
         };
 
-        // Lista de elementos necessários
-        const requiredElements = [
-            'walletAddress',
-            'connectWallet',
-            'dashboardReferralLink',
-            'referralPageLink',
-            'dashboardSponsorAddress',
-            'referralPageSponsor',
-            'userStatus',
-            'userLevel',
-            'donationsReceived',
-            'totalReferrals',
-            'totalCommissions'
-        ];
-
-        // Verifica se todos os elementos necessários existem
-        const missingElements = requiredElements.filter(id => !document.getElementById(id));
-        if (missingElements.length > 0) {
-            console.warn('Elementos não encontrados:', missingElements);
-            // Tenta novamente após um breve delay
-            setTimeout(() => this.updateUI(), 500);
-            return;
-        }
-
+        // Atualiza elementos da UI com verificação de existência
         if (this.account) {
-            console.log('Atualizando UI para conta conectada:', this.account);
-            
-            // Atualiza endereço da carteira
             safeUpdateElement('walletAddress', utils.formatAddress(this.account));
-            safeUpdateElement('connectWallet', `🔗 ${utils.formatAddress(this.account)}`);
-
-            // Gera e atualiza links de convite
-            const baseUrl = window.location.origin;
-            const referralLink = `${baseUrl}?ref=${this.account}`;
-            console.log('Link de convite gerado:', referralLink);
+            safeUpdateElement('dashboardReferralLink', `${window.location.origin}?ref=${this.account}`, 'value');
+            safeUpdateElement('referralPageLink', `${window.location.origin}?ref=${this.account}`, 'value');
             
-            // Atualiza os links em todas as páginas
-            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
-            safeUpdateElement('referralPageLink', referralLink, 'value');
-
-            // Busca ou cria usuário
-            let user = this.userManager.getUser(this.account);
-            if (!user) {
-                const urlParams = new URLSearchParams(window.location.search);
-                const ref = urlParams.get('ref');
-                
-                user = {
-                    wallet: this.account,
-                    level: 1,
-                    isActive: false,
-                    sponsor: ref && this.isValidAddress(ref) && ref !== this.account ? ref : null,
-                    donations: 0,
-                    referrals: [],
-                    totalCommissions: 0
-                };
-                
-                this.userManager.saveUser(this.account, user);
-                if (user.sponsor) {
-                    this.userManager.addReferral(user.sponsor, this.account);
-                }
+            // Atualiza status do botão
+            const connectButton = document.getElementById('connectWallet');
+            if (connectButton) {
+                connectButton.innerHTML = '🔗 ' + utils.formatAddress(this.account);
+                connectButton.classList.add('connected');
             }
-
-            // Atualiza patrocinador
-            const formattedSponsor = user.sponsor ? utils.formatAddress(user.sponsor) : '-';
-            safeUpdateElement('dashboardSponsorAddress', formattedSponsor);
-            safeUpdateElement('referralPageSponsor', formattedSponsor);
-
-            // Atualiza status do usuário
-            safeUpdateElement('userStatus', user.isActive ? 'Ativo' : 'Inativo');
-            const userStatus = document.getElementById('userStatus');
-            if (userStatus) {
-                userStatus.className = user.isActive ? 'status-active' : 'status-inactive';
-            }
-
-            // Atualiza nível e doações
-            safeUpdateElement('userLevel', user.level);
-            safeUpdateElement('donationsReceived', `${user.donations}/10`);
-            
-            // Atualiza total de referidos e comissões
-            safeUpdateElement('totalReferrals', user.referrals.length);
-            safeUpdateElement('totalCommissions', `${user.totalCommissions.toFixed(2)} USDT`);
-
-            // Configura os botões de copiar
-            document.querySelectorAll('.copy-button').forEach(button => {
-                const targetId = button.dataset.copyTarget;
-                if (targetId) {
-                    button.onclick = () => this.copyToClipboard(targetId);
-                }
-            });
-
         } else {
-            console.log('Limpando UI - carteira desconectada');
-            
-            // Limpa informações quando desconectado
             safeUpdateElement('walletAddress', 'Desconectado');
-            safeUpdateElement('connectWallet', '🔗 Conectar MetaMask');
             safeUpdateElement('dashboardReferralLink', '', 'value');
             safeUpdateElement('referralPageLink', '', 'value');
-            safeUpdateElement('dashboardSponsorAddress', '-');
-            safeUpdateElement('referralPageSponsor', '-');
-            safeUpdateElement('userStatus', 'Inativo');
-            safeUpdateElement('userLevel', '1');
-            safeUpdateElement('donationsReceived', '0/10');
-            safeUpdateElement('totalReferrals', '0');
-            safeUpdateElement('totalCommissions', '0 USDT');
-
-            const userStatus = document.getElementById('userStatus');
-            if (userStatus) {
-                userStatus.className = 'status-inactive';
+            
+            // Reseta botão
+            const connectButton = document.getElementById('connectWallet');
+            if (connectButton) {
+                connectButton.innerHTML = '🔗 Conectar MetaMask';
+                connectButton.classList.remove('connected');
             }
         }
 
-        // Atualiza estatísticas gerais
-        this.userManager.updateStatistics();
-        console.log('Atualização da UI concluída');
+        // Atualiza status da rede
+        if (this.chainId) {
+            const networkName = this.getNetworkName(this.chainId);
+            safeUpdateElement('userNetwork', networkName);
+        } else {
+            safeUpdateElement('userNetwork', 'Desconhecido');
+        }
+
+        // Atualiza estatísticas se disponíveis
+        if (this.userManager) {
+            this.userManager.updateStatistics();
+        }
     },
 
     // Busca e mostra o patrocinador

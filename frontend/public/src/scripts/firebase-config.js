@@ -1,75 +1,71 @@
 // Configuração do Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyDHZOl6qVKWXBOWqVV1c-4Rw_BXgGwV6Yw",
+    apiKey: "AIzaSyBnpzLkCVXZZNGlWYlKdXZPOXZQXtxjGfE",
     authDomain: "sistema-doacao-adk.firebaseapp.com",
     databaseURL: "https://sistema-doacao-adk-default-rtdb.firebaseio.com",
     projectId: "sistema-doacao-adk",
     storageBucket: "sistema-doacao-adk.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abc123def456ghi789"
+    messagingSenderId: "1098991066783",
+    appId: "1:1098991066783:web:f0a2c8e0d2c8c2b9b9b9b9"
 };
 
-// Inicializa Firebase com tratamento de erro
-function initializeFirebase() {
-    return new Promise((resolve, reject) => {
-        try {
-            if (!window.firebase) {
-                console.error('Firebase não encontrado. Verificando scripts...');
-                // Verifica se os scripts do Firebase estão carregados
-                const firebaseApp = document.querySelector('script[src*="firebase-app"]');
-                const firebaseDb = document.querySelector('script[src*="firebase-database"]');
-                
-                if (!firebaseApp || !firebaseDb) {
-                    reject(new Error('Scripts do Firebase não encontrados'));
-                    return;
-                }
-            }
+// Inicialização do Firebase com retry e persistência
+let app;
+let database;
+let retryCount = 0;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
 
-            // Verifica se já foi inicializado
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-                console.log('Firebase inicializado com sucesso');
-            } else {
-                console.log('Firebase já estava inicializado');
-            }
-
-            // Referência ao banco de dados
-            const database = firebase.database();
-            
-            // Testa a conexão
-            database.ref('.info/connected').on('value', (snap) => {
-                if (snap.val() === true) {
-                    console.log('Conectado ao Firebase Database');
-                    resolve(database);
-                } else {
-                    console.log('Desconectado do Firebase Database');
-                    reject(new Error('Não foi possível conectar ao Firebase'));
-                }
-            });
-
-            // Define timeout para a conexão
-            setTimeout(() => {
-                reject(new Error('Timeout ao conectar com Firebase'));
-            }, 10000);
-
-            // Exporta as referências
-            window.db = database;
-            
-        } catch (error) {
-            console.error('Erro ao inicializar Firebase:', error);
-            reject(error);
+const initializeFirebase = async () => {
+    try {
+        if (!app) {
+            app = firebase.initializeApp(firebaseConfig);
         }
-    });
-}
+        
+        if (!database) {
+            database = firebase.database();
+            
+            // Habilita persistência offline
+            await database.goOnline();
+            await database.ref('.info/connected').once('value');
+            
+            console.log('Firebase inicializado com sucesso!');
+            return database;
+        }
+        
+        return database;
+    } catch (error) {
+        console.error('Erro ao inicializar Firebase:', error);
+        
+        if (retryCount < MAX_RETRIES) {
+            retryCount++;
+            console.log(`Tentando reconectar em ${RETRY_DELAY/1000} segundos... (Tentativa ${retryCount}/${MAX_RETRIES})`);
+            
+            return new Promise((resolve) => {
+                setTimeout(async () => {
+                    resolve(await initializeFirebase());
+                }, RETRY_DELAY);
+            });
+        }
+        
+        throw new Error('Não foi possível conectar ao Firebase após várias tentativas');
+    }
+};
 
 // Exporta a função de inicialização
-window.initializeFirebase = initializeFirebase;
+export { initializeFirebase };
 
 // Tenta inicializar imediatamente
 initializeFirebase()
     .then(database => {
         console.log('Firebase pronto para uso');
+        // Inicia a sincronização de dados
+        if (window.Web3Context && window.Web3Context.userManager) {
+            window.Web3Context.userManager.initializeFirebaseSync();
+        }
     })
     .catch(error => {
         console.error('Erro na inicialização do Firebase:', error);
+        // Tenta reconectar após 5 segundos
+        setTimeout(initializeFirebase, 5000);
     }); 

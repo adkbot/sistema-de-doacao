@@ -1,3 +1,32 @@
+import { initializeFirebase } from './firebase-config.js';
+import { Web3Context } from './Web3Context.js';
+
+// Inicializa o Firebase e o Web3Context
+async function initializeApp() {
+    try {
+        // Inicializa Firebase com retry
+        const database = await initializeFirebase();
+        console.log('Firebase inicializado com sucesso');
+        
+        // Inicializa Web3Context após Firebase estar pronto
+        window.web3Context = new Web3Context(database);
+        await window.web3Context.initialize();
+        console.log('Web3Context inicializado com sucesso');
+        
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+        // Mostra mensagem de erro para o usuário
+        const errorDiv = document.getElementById('errorMessage');
+        if (errorDiv) {
+            errorDiv.innerText = 'Erro ao conectar. Por favor, recarregue a página.';
+            errorDiv.style.display = 'block';
+        }
+    }
+}
+
+// Inicia a aplicação quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initializeApp);
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Página carregada, inicializando...');
 

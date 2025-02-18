@@ -115,12 +115,11 @@ async function buildProject() {
             throw new Error('Arquivo main.css não encontrado');
         }
 
-        console.log('\n✨ Build concluído com sucesso!');
-        
         // Atualiza o arquivo de versão
         const version = new Date().toISOString();
         await fs.writeFile(path.join(publicDir, 'version.txt'), version);
         console.log(`📝 Versão atualizada: ${version}`);
+        console.log('\n✨ Build concluído com sucesso!');
 
     } catch (err) {
         console.error('\n❌ Erro durante o build:', err);
