@@ -129,36 +129,61 @@ const Web3Context = {
     updateUI() {
         console.log('Atualizando UI com conta:', this.account);
 
-        const updateElement = (id, value, property = 'innerText') => {
+        const safeUpdateElement = (id, value, property = 'innerText') => {
             const element = document.getElementById(id);
-            if (element) {
+            if (!element) {
+                console.log(`Elemento ${id} não encontrado`);
+                return false;
+            }
+            try {
                 if (property === 'value') {
                     element.value = value;
                 } else {
                     element[property] = value;
                 }
+                return true;
+            } catch (error) {
+                console.error(`Erro ao atualizar elemento ${id}:`, error);
+                return false;
             }
         };
 
+        const requiredElements = [
+            'walletAddress',
+            'connectWallet',
+            'dashboardReferralLink',
+            'referralPageLink',
+            'dashboardSponsorAddress',
+            'referralPageSponsor'
+        ];
+
+        // Verifica se todos os elementos necessários existem
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        if (missingElements.length > 0) {
+            console.log('Aguardando elementos serem carregados:', missingElements);
+            setTimeout(() => this.updateUI(), 500); // Tenta novamente em 500ms
+            return;
+        }
+
         if (this.account) {
-            updateElement('walletAddress', utils.formatAddress(this.account));
-            updateElement('connectWallet', `🔗 ${utils.formatAddress(this.account)}`);
+            safeUpdateElement('walletAddress', utils.formatAddress(this.account));
+            safeUpdateElement('connectWallet', `🔗 ${utils.formatAddress(this.account)}`);
 
             const referralLink = `${window.location.origin}?ref=${this.account}`;
-            updateElement('dashboardReferralLink', referralLink, 'value');
-            updateElement('referralPageLink', referralLink, 'value');
+            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
+            safeUpdateElement('referralPageLink', referralLink, 'value');
 
             const sponsor = localStorage.getItem(`sponsor_${this.account}`);
             const formattedSponsor = sponsor ? utils.formatAddress(sponsor) : '-';
-            updateElement('dashboardSponsorAddress', formattedSponsor);
-            updateElement('referralPageSponsor', formattedSponsor);
+            safeUpdateElement('dashboardSponsorAddress', formattedSponsor);
+            safeUpdateElement('referralPageSponsor', formattedSponsor);
         } else {
-            updateElement('walletAddress', 'Desconectado');
-            updateElement('connectWallet', '🔗 Conectar MetaMask');
-            updateElement('dashboardReferralLink', '', 'value');
-            updateElement('referralPageLink', '', 'value');
-            updateElement('dashboardSponsorAddress', '-');
-            updateElement('referralPageSponsor', '-');
+            safeUpdateElement('walletAddress', 'Desconectado');
+            safeUpdateElement('connectWallet', '🔗 Conectar MetaMask');
+            safeUpdateElement('dashboardReferralLink', '', 'value');
+            safeUpdateElement('referralPageLink', '', 'value');
+            safeUpdateElement('dashboardSponsorAddress', '-');
+            safeUpdateElement('referralPageSponsor', '-');
         }
     },
 
