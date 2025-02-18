@@ -7,20 +7,23 @@
     "start": "node ../server.js",
     "build": "node build.js",
     "dev": "nodemon ../server.js",
-    "clean": "rimraf public/src",
+    "clean": "rimraf public/src public/node_modules",
     "prebuild": "npm run clean",
-    "postbuild": "echo '✨ Build completado com sucesso!'"
+    "postbuild": "echo '✨ Build completado com sucesso!'",
+    "serve": "serve frontend/public"
   },
   "dependencies": {
+    "@wikimedia/jquery.i18n": "1.0.7",
     "express": "^4.17.1",
-    "web3": "^1.5.2",
+    "firebase": "^9.6.0",
     "fs-extra": "^11.2.0",
     "jquery": "^3.6.0",
-    "@wikimedia/jquery.i18n": "^1.0.7"
+    "rimraf": "^3.0.2",
+    "serve": "^14.2.1",
+    "web3": "^1.5.2"
   },
   "devDependencies": {
-    "nodemon": "^2.0.15",
-    "rimraf": "^3.0.2"
+    "nodemon": "^2.0.15"
   },
   "engines": {
     "node": ">=14.0.0",
