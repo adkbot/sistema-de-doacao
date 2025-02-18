@@ -8,18 +8,25 @@ async function buildProject() {
         const publicDir = path.join(__dirname, 'public');
         const srcDir = path.join(__dirname, 'src');
         const publicSrcDir = path.join(publicDir, 'src');
+        const nodeModulesDir = path.join(__dirname, 'node_modules');
+        const publicNodeModulesDir = path.join(publicDir, 'node_modules');
 
-        // Limpa a pasta public/src
-        console.log('🧹 Limpando diretório public/src...');
+        // Limpa as pastas
+        console.log('🧹 Limpando diretórios...');
         await fs.remove(publicSrcDir);
+        await fs.remove(publicNodeModulesDir);
         
         // Cria as pastas necessárias
         console.log('📁 Criando estrutura de diretórios...');
         await fs.ensureDir(path.join(publicSrcDir, 'scripts'));
         await fs.ensureDir(path.join(publicSrcDir, 'styles'));
+        await fs.ensureDir(path.join(publicNodeModulesDir, 'jquery/dist'));
+        await fs.ensureDir(path.join(publicNodeModulesDir, '@wikimedia/jquery.i18n/src'));
+        await fs.ensureDir(path.join(publicNodeModulesDir, 'web3/dist'));
 
         // Lista de arquivos para copiar
         const filesToCopy = [
+            // Arquivos da aplicação
             {
                 src: path.join(srcDir, 'scripts', 'config.js'),
                 dest: path.join(publicSrcDir, 'scripts', 'config.js')
@@ -43,6 +50,35 @@ async function buildProject() {
             {
                 src: path.join(srcDir, 'styles', 'main.css'),
                 dest: path.join(publicSrcDir, 'styles', 'main.css')
+            },
+            // Dependências do node_modules
+            {
+                src: path.join(nodeModulesDir, 'jquery/dist/jquery.min.js'),
+                dest: path.join(publicNodeModulesDir, 'jquery/dist/jquery.min.js')
+            },
+            {
+                src: path.join(nodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.js'),
+                dest: path.join(publicNodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.js')
+            },
+            {
+                src: path.join(nodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.messagestore.js'),
+                dest: path.join(publicNodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.messagestore.js')
+            },
+            {
+                src: path.join(nodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.fallbacks.js'),
+                dest: path.join(publicNodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.fallbacks.js')
+            },
+            {
+                src: path.join(nodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.parser.js'),
+                dest: path.join(publicNodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.parser.js')
+            },
+            {
+                src: path.join(nodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.emitter.js'),
+                dest: path.join(publicNodeModulesDir, '@wikimedia/jquery.i18n/src/jquery.i18n.emitter.js')
+            },
+            {
+                src: path.join(nodeModulesDir, 'web3/dist/web3.min.js'),
+                dest: path.join(publicNodeModulesDir, 'web3/dist/web3.min.js')
             }
         ];
 

@@ -605,7 +605,7 @@ const Web3Context = {
         const safeUpdateElement = (id, value, property = 'innerText') => {
             const element = document.getElementById(id);
             if (!element) {
-                console.warn(`Elemento ${id} não encontrado`);
+                console.warn(`Elemento ${id} não encontrado, aguardando...`);
                 return false;
             }
             try {
@@ -640,8 +640,7 @@ const Web3Context = {
         // Verifica se todos os elementos necessários existem
         const missingElements = requiredElements.filter(id => !document.getElementById(id));
         if (missingElements.length > 0) {
-            console.warn('Elementos não encontrados:', missingElements);
-            // Tenta novamente após um breve delay
+            console.warn('Elementos não encontrados, tentando novamente em 500ms:', missingElements);
             setTimeout(() => this.updateUI(), 500);
             return;
         }
@@ -659,8 +658,14 @@ const Web3Context = {
             console.log('Link de convite gerado:', referralLink);
             
             // Atualiza os links em todas as páginas
-            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
-            safeUpdateElement('referralPageLink', referralLink, 'value');
+            const dashboardLinkUpdated = safeUpdateElement('dashboardReferralLink', referralLink, 'value');
+            const referralLinkUpdated = safeUpdateElement('referralPageLink', referralLink, 'value');
+
+            if (!dashboardLinkUpdated || !referralLinkUpdated) {
+                console.warn('Links de convite não atualizados completamente, tentando novamente...');
+                setTimeout(() => this.updateUI(), 500);
+                return;
+            }
 
             // Busca ou cria usuário
             let user = this.userManager.getUser(this.account);
@@ -686,23 +691,35 @@ const Web3Context = {
 
             // Atualiza patrocinador
             const formattedSponsor = user.sponsor ? utils.formatAddress(user.sponsor) : '-';
-            safeUpdateElement('dashboardSponsorAddress', formattedSponsor);
-            safeUpdateElement('referralPageSponsor', formattedSponsor);
+            const sponsorUpdated = safeUpdateElement('dashboardSponsorAddress', formattedSponsor) &&
+                                 safeUpdateElement('referralPageSponsor', formattedSponsor);
+
+            if (!sponsorUpdated) {
+                console.warn('Informações do patrocinador não atualizadas completamente, tentando novamente...');
+                setTimeout(() => this.updateUI(), 500);
+                return;
+            }
 
             // Atualiza status do usuário
-            safeUpdateElement('userStatus', user.isActive ? 'Ativo' : 'Inativo');
+            const statusUpdated = safeUpdateElement('userStatus', user.isActive ? 'Ativo' : 'Inativo');
             const userStatus = document.getElementById('userStatus');
             if (userStatus) {
                 userStatus.className = user.isActive ? 'status-active' : 'status-inactive';
             }
 
             // Atualiza nível e doações
-            safeUpdateElement('userLevel', user.level);
-            safeUpdateElement('donationsReceived', `${user.donations}/10`);
+            const levelUpdated = safeUpdateElement('userLevel', user.level);
+            const donationsUpdated = safeUpdateElement('donationsReceived', `${user.donations}/10`);
             
             // Atualiza total de referidos e comissões
-            safeUpdateElement('totalReferrals', user.referrals.length);
-            safeUpdateElement('totalCommissions', `${user.totalCommissions.toFixed(2)} USDT`);
+            const referralsUpdated = safeUpdateElement('totalReferrals', user.referrals.length);
+            const commissionsUpdated = safeUpdateElement('totalCommissions', `${user.totalCommissions.toFixed(2)} USDT`);
+
+            if (!statusUpdated || !levelUpdated || !donationsUpdated || !referralsUpdated || !commissionsUpdated) {
+                console.warn('Algumas informações não foram atualizadas, tentando novamente...');
+                setTimeout(() => this.updateUI(), 500);
+                return;
+            }
 
             // Configura os botões de copiar
             document.querySelectorAll('.copy-button').forEach(button => {
@@ -716,17 +733,25 @@ const Web3Context = {
             console.log('Limpando UI - carteira desconectada');
             
             // Limpa informações quando desconectado
-            safeUpdateElement('walletAddress', 'Desconectado');
-            safeUpdateElement('connectWallet', '🔗 Conectar MetaMask');
-            safeUpdateElement('dashboardReferralLink', '', 'value');
-            safeUpdateElement('referralPageLink', '', 'value');
-            safeUpdateElement('dashboardSponsorAddress', '-');
-            safeUpdateElement('referralPageSponsor', '-');
-            safeUpdateElement('userStatus', 'Inativo');
-            safeUpdateElement('userLevel', '1');
-            safeUpdateElement('donationsReceived', '0/10');
-            safeUpdateElement('totalReferrals', '0');
-            safeUpdateElement('totalCommissions', '0 USDT');
+            const fieldsCleared = [
+                safeUpdateElement('walletAddress', 'Desconectado'),
+                safeUpdateElement('connectWallet', '🔗 Conectar MetaMask'),
+                safeUpdateElement('dashboardReferralLink', '', 'value'),
+                safeUpdateElement('referralPageLink', '', 'value'),
+                safeUpdateElement('dashboardSponsorAddress', '-'),
+                safeUpdateElement('referralPageSponsor', '-'),
+                safeUpdateElement('userStatus', 'Inativo'),
+                safeUpdateElement('userLevel', '1'),
+                safeUpdateElement('donationsReceived', '0/10'),
+                safeUpdateElement('totalReferrals', '0'),
+                safeUpdateElement('totalCommissions', '0 USDT')
+            ];
+
+            if (fieldsCleared.includes(false)) {
+                console.warn('Alguns campos não foram limpos corretamente, tentando novamente...');
+                setTimeout(() => this.updateUI(), 500);
+                return;
+            }
 
             const userStatus = document.getElementById('userStatus');
             if (userStatus) {
@@ -736,7 +761,7 @@ const Web3Context = {
 
         // Atualiza estatísticas gerais
         this.userManager.updateStatistics();
-        console.log('Atualização da UI concluída');
+        console.log('Atualização da UI concluída com sucesso');
     },
 
     // Busca e mostra o patrocinador

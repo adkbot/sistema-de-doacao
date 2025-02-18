@@ -77,25 +77,81 @@ document.addEventListener('DOMContentLoaded', () => {
                     utils.showLoading(button);
                     const amount = button.dataset.amount;
 
+                    // Verifica se já está ativo no sistema
+                    const isActive = localStorage.getItem(`active_${Web3Context.account}`);
+                    if (isActive === 'true') {
+                        throw new Error('Você já está ativo no sistema!');
+                    }
+
+                    // Verifica se tem patrocinador
+                    const sponsor = localStorage.getItem(`sponsor_${Web3Context.account}`);
+                    if (!sponsor) {
+                        throw new Error('Você precisa de um patrocinador para fazer doações');
+                    }
+
                     // Inicializa contrato USDT
                     const usdtContract = new Web3Context.web3.eth.Contract(USDT_ABI, config.usdtAddress);
                     
                     // Converte o valor para USDT (6 decimais)
-                    const amountInDecimals = amount * (10 ** 6); // USDT tem 6 decimais
+                    const amountInDecimals = Web3Context.web3.utils.toWei(amount, 'mwei'); // mwei para 6 decimais
                     
                     // Verifica saldo USDT
                     const balance = await usdtContract.methods.balanceOf(Web3Context.account).call();
-                    if (Number(balance) < amountInDecimals) {
+                    if (Number(balance) < Number(amountInDecimals)) {
                         throw new Error('Saldo USDT insuficiente para fazer a doação');
                     }
+
+                    // Verifica allowance
+                    const allowance = await usdtContract.methods.allowance(Web3Context.account, config.poolAddress).call();
+                    if (Number(allowance) < Number(amountInDecimals)) {
+                        console.log('Solicitando aprovação de USDT...');
+                        const approveAmount = Web3Context.web3.utils.toWei('1000000', 'mwei'); // Aprova um valor alto
+                        await usdtContract.methods.approve(config.poolAddress, approveAmount).send({
+                            from: Web3Context.account
+                        });
+                    }
                     
-                    // Envia transação diretamente
-                    const tx = await usdtContract.methods.transfer(config.poolAddress, amountInDecimals.toString()).send({
+                    // Envia transação
+                    console.log('Enviando transação...');
+                    console.log('Valor em decimais:', amountInDecimals);
+                    console.log('Endereço da pool:', config.poolAddress);
+                    
+                    const tx = await usdtContract.methods.transfer(config.poolAddress, amountInDecimals).send({
                         from: Web3Context.account
                     });
 
                     if (tx && tx.transactionHash) {
-                        utils.showSuccess('Doação de ' + amount + ' USDT realizada com sucesso!');
+                        // Marca usuário como ativo
+                        localStorage.setItem(`active_${Web3Context.account}`, 'true');
+                        
+                        // Atualiza informações do usuário
+                        const currentDonations = parseInt(localStorage.getItem(`donations_${Web3Context.account}`) || '0');
+                        const currentLevel = parseInt(localStorage.getItem(`level_${Web3Context.account}`) || '1');
+                        
+                        // Incrementa doações
+                        const newDonations = currentDonations + 1;
+                        localStorage.setItem(`donations_${Web3Context.account}`, newDonations.toString());
+                        
+                        // Verifica se deve subir de nível
+                        if (newDonations >= 10) {
+                            const newLevel = Math.min(currentLevel + 1, 3);
+                            localStorage.setItem(`level_${Web3Context.account}`, newLevel.toString());
+                            localStorage.setItem(`donations_${Web3Context.account}`, '0');
+                            
+                            utils.showSuccess(`Parabéns! Você avançou para o nível ${newLevel}!`);
+                        }
+
+                        // Registra a transação
+                        const txKey = `tx_${tx.transactionHash}`;
+                        localStorage.setItem(txKey, JSON.stringify({
+                            from: Web3Context.account,
+                            to: config.poolAddress,
+                            amount: amount,
+                            sponsor: sponsor,
+                            timestamp: Date.now()
+                        }));
+                        
+                        utils.showSuccess('Doação realizada com sucesso! Você está ativo no sistema.');
                         await Web3Context.updateNetworkStats(Web3Context.account);
                     } else {
                         throw new Error('Transação falhou');
@@ -103,7 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 } catch (error) {
                     console.error('Erro ao processar doação:', error);
-                    utils.showError(error.message || 'Erro ao processar doação');
+                    let errorMessage = error.message;
+                    
+                    // Trata erros específicos do MetaMask
+                    if (error.code === 4001) {
+                        errorMessage = 'Transação rejeitada pelo usuário';
+                    } else if (error.message.includes('insufficient funds')) {
+                        errorMessage = 'Saldo insuficiente para pagar a taxa de gás';
+                    } else if (error.message.includes('execution reverted')) {
+                        errorMessage = 'Erro na execução da transação. Verifique seu saldo USDT';
+                    }
+                    
+                    utils.showError(errorMessage || 'Erro ao processar doação');
                 } finally {
                     utils.hideLoading(button);
                     modal.hideAll();
@@ -167,6 +234,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelDonationBtn) {
         cancelDonationBtn.addEventListener('click', () => {
             modal.hideAll();
+        });
+    }
+
+    // Adiciona evento ao botão de doação
+    const donateButton = document.getElementById('donate');
+    if (donateButton) {
+        donateButton.addEventListener('click', () => {
+            if (!Web3Context.account) {
+                utils.showError('Por favor, conecte sua carteira primeiro!');
+                return;
+            }
+
+            // Verifica se já está ativo
+            const isActive = localStorage.getItem(`active_${Web3Context.account}`);
+            if (isActive === 'true') {
+                utils.showError('Você já está ativo no sistema!');
+                return;
+            }
+
+            // Verifica se tem patrocinador
+            const sponsor = localStorage.getItem(`sponsor_${Web3Context.account}`);
+            if (!sponsor) {
+                utils.showError('Você precisa de um patrocinador para fazer doações');
+                return;
+            }
+
+            // Mostra o modal de planos
+            const planModal = document.getElementById('planModal');
+            if (planModal) {
+                // Atualiza informações no modal
+                document.getElementById('selectedWallet').textContent = utils.formatAddress(Web3Context.account);
+                modal.show(planModal);
+            }
         });
     }
 }); 
