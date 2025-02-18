@@ -528,9 +528,47 @@ const Web3Context = {
     // Busca e mostra o patrocinador
     async getAndShowSponsor() {
         try {
+            const safeUpdateElement = (id, value, property = 'innerText') => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.log(`Elemento ${id} não encontrado`);
+                    return false;
+                }
+                try {
+                    if (property === 'value') {
+                        element.value = value;
+                    } else {
+                        element[property] = value;
+                    }
+                    return true;
+                } catch (error) {
+                    console.error(`Erro ao atualizar elemento ${id}:`, error);
+                    return false;
+                }
+            };
+
+            // Lista de elementos necessários
+            const requiredElements = [
+                'dashboardSponsorAddress',
+                'referralPageSponsor',
+                'dashboardReferralLink',
+                'referralPageLink'
+            ];
+
+            // Verifica se todos os elementos necessários existem
+            const missingElements = requiredElements.filter(id => !document.getElementById(id));
+            if (missingElements.length > 0) {
+                console.log('Aguardando elementos serem carregados:', missingElements);
+                setTimeout(() => this.getAndShowSponsor(), 500); // Tenta novamente em 500ms
+                return;
+            }
+
             if (!this.account) {
-                document.getElementById('dashboardSponsorAddress').innerText = '-';
-                document.getElementById('referralPageSponsor').innerText = '-';
+                // Atualiza com valores padrão quando não há conta conectada
+                safeUpdateElement('dashboardSponsorAddress', '-');
+                safeUpdateElement('referralPageSponsor', '-');
+                safeUpdateElement('dashboardReferralLink', '', 'value');
+                safeUpdateElement('referralPageLink', '', 'value');
                 return;
             }
 
@@ -544,18 +582,60 @@ const Web3Context = {
 
             // Busca o patrocinador do localStorage
             const sponsor = localStorage.getItem(`sponsor_${this.account}`);
+            const formattedSponsor = sponsor ? utils.formatAddress(sponsor) : '-';
             
             // Atualiza o patrocinador em todas as páginas
-            document.getElementById('dashboardSponsorAddress').innerText = sponsor ? utils.formatAddress(sponsor) : '-';
-            document.getElementById('referralPageSponsor').innerText = sponsor ? utils.formatAddress(sponsor) : '-';
+            safeUpdateElement('dashboardSponsorAddress', formattedSponsor);
+            safeUpdateElement('referralPageSponsor', formattedSponsor);
 
             // Atualiza links de convite
             const referralLink = `${window.location.origin}?ref=${this.account}`;
-            document.getElementById('dashboardReferralLink').value = referralLink;
-            document.getElementById('referralPageLink').value = referralLink;
+            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
+            safeUpdateElement('referralPageLink', referralLink, 'value');
+
+            // Atualiza os botões de copiar
+            const copyButtons = document.querySelectorAll('[onclick*="copyToClipboard"]');
+            copyButtons.forEach(button => {
+                button.onclick = (e) => {
+                    e.preventDefault();
+                    const inputId = button.getAttribute('data-copy-target') || 
+                                  button.onclick.toString().match(/copyToClipboard\('([^']+)'\)/)[1];
+                    this.copyToClipboard(inputId);
+                };
+            });
 
         } catch (error) {
             console.error('Erro ao buscar patrocinador:', error);
+            // Tenta novamente em caso de erro
+            setTimeout(() => this.getAndShowSponsor(), 1000);
+        }
+    },
+
+    // Função de copiar melhorada
+    copyToClipboard(elementId) {
+        try {
+            const element = document.getElementById(elementId);
+            if (!element) {
+                throw new Error(`Elemento ${elementId} não encontrado`);
+            }
+
+            // Seleciona o texto
+            element.select();
+            element.setSelectionRange(0, 99999); // Para dispositivos móveis
+
+            // Copia para a área de transferência
+            navigator.clipboard.writeText(element.value)
+                .then(() => {
+                    utils.showSuccess('Link copiado para a área de transferência!');
+                })
+                .catch(err => {
+                    // Fallback para o método antigo
+                    document.execCommand('copy');
+                    utils.showSuccess('Link copiado para a área de transferência!');
+                });
+        } catch (error) {
+            console.error('Erro ao copiar:', error);
+            utils.showError('Não foi possível copiar o link');
         }
     },
 
