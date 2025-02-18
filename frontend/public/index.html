@@ -25,9 +25,9 @@
     <header>
         <h1 id="title"><span class="rotating-globe">🌎</span> ADK Donation System</h1>
         <nav class="main-nav">
-            <button class="nav-btn active" data-page="dashboard">📊 Dashboard</button>
-            <button class="nav-btn" data-page="network">🌐 Rede</button>
-            <button class="nav-btn" data-page="referral">🔗 Links</button>
+            <button class="nav-btn active" data-page="dashboard" onclick="changePage('dashboard')">📊 Dashboard</button>
+            <button class="nav-btn" data-page="network" onclick="changePage('network')">🌐 Rede</button>
+            <button class="nav-btn" data-page="referral" onclick="changePage('referral')">🔗 Links</button>
         </nav>
         <div class="header-right">
             <select id="languageSelector">
@@ -42,50 +42,61 @@
 
     <main>
         <!-- Página 1: Dashboard -->
-        <div class="page active" id="dashboardPage">
+        <div class="page" id="dashboardPage">
             <section id="dashboard">
-                <h2 data-i18n="dashboard">📊 Dashboard</h2>
-                <p><strong data-i18n="wallet_connected">Carteira Conectada:</strong> <span id="walletAddress">Desconectado</span></p>
-                <p><strong>Status:</strong> <span id="userStatus" class="status-inactive">Inativo</span></p>
-                <p><strong data-i18n="pool_balance">Saldo da Pool:</strong> <span id="poolBalance">0</span> <span>USDT</span></p>
+                <h2 data-i18n="dashboard" style="color: #000000 !important;">📊 Dashboard</h2>
+                <div class="dashboard-content">
+                    <div class="user-info">
+                        <p><strong data-i18n="wallet_connected">Carteira Conectada:</strong> <span id="walletAddress">Desconectado</span></p>
+                        <p><strong>Status:</strong> <span id="userStatus" class="status-inactive">Inativo</span></p>
+                        <p><strong data-i18n="pool_balance">Saldo da Pool:</strong> <span id="poolBalance">0</span> <span>USDT</span></p>
+                    </div>
+                </div>
             </section>
 
             <section id="donationSystem">
-                <h2 data-i18n="donation_system">💰 Sistema de Doação</h2>
-                <p><strong data-i18n="current_level">Nível Atual:</strong> <span id="userLevel">1</span></p>
-                <p><strong data-i18n="donations_received">Doações Recebidas:</strong> <span id="donationsReceived">0</span> / 10</p>
-                <button id="donate" class="action-button">💰 <span data-i18n="make_donation">Fazer Doação</span></button>
+                <h2 data-i18n="donation_system" style="color: #000000 !important;">💰 Sistema de Doação</h2>
+                <div class="donation-info">
+                    <p><strong data-i18n="current_level">Nível Atual:</strong> <span id="userLevel">1</span></p>
+                    <p><strong data-i18n="donations_received">Doações Recebidas:</strong> <span id="donationsReceived">0</span> / 10</p>
+                    <button id="donate" class="action-button">💰 <span data-i18n="make_donation">Fazer Doação</span></button>
+                </div>
             </section>
 
             <section id="networkStatus">
-                <h2>📊 Estatísticas da Rede</h2>
-                <p><strong>Total de Usuários:</strong> <span id="totalUsers">0</span></p>
-                <p><strong>Usuários Ativos:</strong> <span id="activeUsers">0</span></p>
-                <p><strong>Usuários por Nível:</strong> <span id="networkLevels">Nível 1: 0 | Nível 2: 0 | Nível 3: 0</span></p>
+                <h2 style="color: #000000 !important;">📊 Estatísticas da Rede</h2>
+                <div class="network-stats">
+                    <p><strong>Total de Usuários:</strong> <span id="totalUsers">0</span></p>
+                    <p><strong>Usuários Ativos:</strong> <span id="activeUsers">0</span></p>
+                    <p><strong>Usuários por Nível:</strong> <span id="networkLevels">Nível 1: 0 | Nível 2: 0 | Nível 3: 0</span></p>
+                </div>
             </section>
 
             <section id="commissions">
-                <h2>💎 Suas Comissões</h2>
-                <p><strong>Total de Referidos:</strong> <span id="totalReferrals">0</span></p>
-                <p><strong>Comissões Ganhas:</strong> <span id="totalCommissions">0</span> USDT</p>
-                <div class="link-container">
-                    <p><strong>Seu Link de Convite:</strong></p>
-                    <div class="copy-link">
-                        <input type="text" id="userReferralLink" readonly>
-                        <button id="copyUserLink" onclick="utils.copyToClipboard('userReferralLink')">📋 Copiar</button>
+                <h2 style="color: #000000 !important;">💎 Suas Comissões</h2>
+                <div class="commission-info">
+                    <p><strong>Total de Referidos:</strong> <span id="totalReferrals">0</span></p>
+                    <p><strong>Comissões Ganhas:</strong> <span id="totalCommissions">0</span> USDT</p>
+                    <div class="link-container">
+                        <p><strong>Seu Link de Convite:</strong></p>
+                        <div class="copy-link">
+                            <input type="text" id="dashboardReferralLink" readonly>
+                            <button onclick="utils.copyToClipboard('dashboardReferralLink')">📋 Copiar</button>
+                        </div>
                     </div>
+                    <p><strong>Seu Patrocinador:</strong> <span id="dashboardSponsorAddress">-</span></p>
                 </div>
-                <p><strong>Seu Patrocinador:</strong> <span id="sponsorAddress">-</span></p>
             </section>
         </div>
 
         <!-- Página 2: Status da Rede -->
         <div class="page" id="networkPage">
-            <section id="networkStatus">
-                <h2 data-i18n="network_status">🔗 Status da Rede</h2>
-                <p><strong data-i18n="user_network">Rede do Usuário:</strong> <span id="userNetwork">Desconhecido</span></p>
-                <p><strong data-i18n="people_each_level">Pessoas em cada nível:</strong> <span id="networkLevels">0</span></p>
-                <p><strong data-i18n="total_users">Total geral de usuários:</strong> <span id="totalUsers">0</span></p>
+            <section id="networkView">
+                <h2 data-i18n="network_status" style="color: #000000 !important;">🌐 Status da Rede</h2>
+                <div class="network-info">
+                    <p><strong data-i18n="user_network">Rede do Usuário:</strong> <span id="userNetwork">Desconhecido</span></p>
+                    <p><strong data-i18n="total_users">Total de Usuários:</strong> <span id="networkTotalUsers">0</span></p>
+                </div>
                 
                 <div class="network-view">
                     <h3>Sua Rede</h3>
@@ -110,17 +121,19 @@
         <!-- Página 3: Links de Convite -->
         <div class="page" id="referralPage">
             <section id="referralLinks">
-                <h2>🔗 Links de Convite</h2>
-                <div class="link-container">
-                    <p><strong>Seu Link de Convite:</strong></p>
-                    <div class="copy-link">
-                        <input type="text" id="userReferralLink" readonly>
-                        <button id="copyUserLink" onclick="utils.copyToClipboard('userReferralLink')">📋 Copiar</button>
+                <h2 style="color: #000000 !important;">🔗 Links de Convite</h2>
+                <div class="referral-content">
+                    <div class="link-container">
+                        <p><strong>Seu Link de Convite:</strong></p>
+                        <div class="copy-link">
+                            <input type="text" id="referralPageLink" readonly>
+                            <button onclick="utils.copyToClipboard('referralPageLink')">📋 Copiar</button>
+                        </div>
+                        <p class="referral-info"><small>Compartilhe este link para convidar pessoas e ganhar comissões!</small></p>
                     </div>
-                    <p><small>Compartilhe este link para convidar pessoas e ganhar comissões!</small></p>
-                </div>
-                <div class="link-container">
-                    <p><strong>Seu Patrocinador:</strong> <span id="sponsorAddress">-</span></p>
+                    <div class="sponsor-info">
+                        <p><strong>Seu Patrocinador:</strong> <span id="referralPageSponsor">-</span></p>
+                    </div>
                 </div>
             </section>
         </div>
@@ -319,6 +332,198 @@
             justify-content: space-between;
             margin-top: 20px;
         }
+
+        .page {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .page.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .nav-btn {
+            cursor: pointer;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: #28a745;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Estilos gerais */
+        main {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Estilos das seções */
+        section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        section h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        /* Estilos do link de convite */
+        .copy-link {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .copy-link input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .copy-link button {
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-link button:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+
+        /* Estilos da rede */
+        .network-view {
+            margin-top: 30px;
+        }
+
+        .network-levels {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .level-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .level-box h4 {
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+
+        .level-users {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .user-address {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-address:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Animação do globo */
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .rotating-globe {
+            display: inline-block;
+            animation: rotate 2s linear infinite;
+            font-size: 24px;
+        }
     </style>
+
+    <script>
+    function changePage(pageId) {
+        console.log('Mudando para página:', pageId);
+        
+        // Remove a classe active de todos os botões
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Adiciona a classe active ao botão clicado
+        const selectedButton = document.querySelector(`[data-page="${pageId}"]`);
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+        }
+        
+        // Esconde todas as páginas
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+            page.style.display = 'none';
+            page.style.opacity = '0';
+        });
+        
+        // Mostra a página selecionada
+        const selectedPage = document.getElementById(`${pageId}Page`);
+        if (selectedPage) {
+            selectedPage.classList.add('active');
+            selectedPage.style.display = 'block';
+            setTimeout(() => {
+                selectedPage.style.opacity = '1';
+            }, 50);
+            
+            // Atualiza as estatísticas se necessário
+            if (window.Web3Context) {
+                if (pageId === 'network') {
+                    Web3Context.updateUserNetwork();
+                } else if (pageId === 'referral') {
+                    Web3Context.getAndShowSponsor();
+                }
+            }
+        }
+    }
+
+    // Inicializa a primeira página
+    document.addEventListener('DOMContentLoaded', () => {
+        changePage('dashboard');
+    });
+    </script>
 </body>
 </html> 
