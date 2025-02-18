@@ -72,10 +72,24 @@ const Web3Context = {
                     }
                 })
                 .catch(console.error);
+
+            // Inicia atualização automática das estatísticas
+            this.startAutoUpdate();
         } else {
             console.error('MetaMask não encontrada');
             utils.showError('Por favor, instale a MetaMask para usar o sistema');
         }
+    },
+
+    // Inicia atualização automática
+    startAutoUpdate() {
+        setInterval(() => {
+            if (this.account) {
+                this.updateNetworkStats(this.account);
+                this.updateUserNetwork();
+                this.checkCommissions(this.account);
+            }
+        }, 30000);
     },
 
     // Verifica se a rede é válida
@@ -242,45 +256,26 @@ const Web3Context = {
         try {
             console.log('Iniciando atualização de estatísticas...');
             
-            // Inicializa contrato USDT
             const usdtContract = new this.web3.eth.Contract(USDT_ABI, config.usdtAddress);
             
-            // Busca saldo USDT da pool e decimais em paralelo
             const [poolBalance, decimals] = await Promise.all([
                 usdtContract.methods.balanceOf(config.poolAddress).call(),
                 usdtContract.methods.decimals().call()
             ]);
             
-            console.log('Dados da pool:', {
-                poolBalance,
-                decimals,
-                poolAddress: config.poolAddress
-            });
-
-            // Converte o saldo considerando os decimais
             this.networkTotal = (Number(poolBalance) / (10 ** decimals)).toFixed(2);
-            console.log('Saldo da pool:', this.networkTotal, 'USDT');
-
-            // Atualiza interface
+            
+            // Atualiza interface com animação do globo
             const poolBalanceElement = document.getElementById('poolBalance');
             if (poolBalanceElement) {
-                poolBalanceElement.textContent = this.networkTotal;
-                // Força atualização do texto USDT
-                const usdtSpan = poolBalanceElement.nextElementSibling;
-                if (usdtSpan) {
-                    usdtSpan.textContent = 'USDT';
-                }
+                poolBalanceElement.innerHTML = `<span class="rotating-globe">🌎</span> ${this.networkTotal} USDT`;
             }
 
-            // Atualiza a cada 30 segundos
-            setTimeout(() => this.updateNetworkStats(account), 30000);
-
-            // Contagem de usuários e níveis
+            // Atualiza estatísticas de usuários
             let totalUsers = 0;
-            let usersPerLevel = {1: 0, 2: 0, 3: 0};
             let activeUsers = 0;
+            let usersPerLevel = {1: 0, 2: 0, 3: 0};
 
-            // Analisa localStorage para estatísticas
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key.startsWith('level_')) {
@@ -296,13 +291,14 @@ const Web3Context = {
                 }
             }
 
-            // Atualiza estatísticas na interface
+            // Atualiza interface com estatísticas
             document.getElementById('totalUsers').textContent = totalUsers;
             document.getElementById('activeUsers').textContent = activeUsers;
-            document.getElementById('networkLevels').textContent = 
-                `Nível 1: ${usersPerLevel[1]} | Nível 2: ${usersPerLevel[2]} | Nível 3: ${usersPerLevel[3]}`;
+            document.getElementById('networkLevels').innerHTML = 
+                `Nível 1: <strong>${usersPerLevel[1]}</strong> | 
+                 Nível 2: <strong>${usersPerLevel[2]}</strong> | 
+                 Nível 3: <strong>${usersPerLevel[3]}</strong>`;
 
-            // Se tiver conta conectada, atualiza informações do usuário
             if (account) {
                 const userBalance = await usdtContract.methods.balanceOf(account).call();
                 const userBalanceFormatted = (Number(userBalance) / (10 ** decimals)).toFixed(2);
@@ -310,21 +306,14 @@ const Web3Context = {
                 const isActive = localStorage.getItem(`active_${account}`) === 'true';
                 const userLevel = localStorage.getItem(`level_${account}`) || '1';
                 const donations = localStorage.getItem(`donations_${account}`) || '0';
-                const sponsor = localStorage.getItem(`sponsor_${account}`);
 
-                // Atualiza interface do usuário
                 document.getElementById('userLevel').textContent = userLevel;
                 document.getElementById('donationsReceived').textContent = `${donations}/10`;
                 document.getElementById('userBalance').textContent = `${userBalanceFormatted} USDT`;
                 document.getElementById('userStatus').textContent = isActive ? 'Ativo' : 'Inativo';
                 document.getElementById('userStatus').className = isActive ? 'status-active' : 'status-inactive';
-                
-                if (sponsor) {
-                    document.getElementById('sponsorAddress').textContent = utils.formatAddress(sponsor);
-                }
             }
 
-            console.log('Atualização de estatísticas concluída');
         } catch (error) {
             console.error('Erro ao atualizar estatísticas:', error);
             utils.showError('Erro ao atualizar estatísticas da rede');
@@ -416,45 +405,95 @@ const Web3Context = {
     // Atualiza a interface
     updateUI() {
         console.log('Atualizando UI com conta:', this.account);
+
+        const safeUpdateElement = (id, value, property = 'innerText') => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (property === 'value') {
+                    element.value = value;
+                } else {
+                    element[property] = value;
+                }
+                return true;
+            }
+            console.warn(`Elemento ${id} não encontrado`);
+            return false;
+        };
+
         if (this.account) {
-            elements.walletAddressSpan.innerText = utils.formatAddress(this.account);
-            elements.connectWalletBtn.innerHTML = `🔗 ${utils.formatAddress(this.account)}`;
-            elements.userNetworkSpan.innerText = this.getNetworkName(this.chainId);
+            // Atualiza endereço da carteira
+            safeUpdateElement('walletAddress', utils.formatAddress(this.account));
+            safeUpdateElement('connectWallet', `🔗 ${utils.formatAddress(this.account)}`);
 
-            // Atualiza o link de convite
+            // Gera e atualiza links de convite
             const referralLink = `${window.location.origin}?ref=${this.account}`;
-            document.getElementById('userReferralLink').value = referralLink;
+            console.log('Gerando link de convite:', referralLink);
+            
+            // Atualiza os links em todas as páginas
+            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
+            safeUpdateElement('referralPageLink', referralLink, 'value');
 
-            // Busca e mostra o patrocinador
-            this.getAndShowSponsor();
+            // Atualiza patrocinador
+            const sponsor = localStorage.getItem(`sponsor_${this.account}`);
+            const formattedSponsor = sponsor ? utils.formatAddress(sponsor) : '-';
+            safeUpdateElement('dashboardSponsorAddress', formattedSponsor);
+            safeUpdateElement('referralPageSponsor', formattedSponsor);
+
+            // Atualiza status do usuário
+            const isActive = localStorage.getItem(`active_${this.account}`) === 'true';
+            const userStatus = document.getElementById('userStatus');
+            if (userStatus) {
+                userStatus.textContent = isActive ? 'Ativo' : 'Inativo';
+                userStatus.className = isActive ? 'status-active' : 'status-inactive';
+            }
         } else {
-            elements.walletAddressSpan.innerText = 'Desconectado';
-            elements.connectWalletBtn.innerHTML = '🔗 Conectar MetaMask';
-            document.getElementById('userReferralLink').value = '';
-            document.getElementById('sponsorAddress').innerText = '-';
+            // Limpa informações quando desconectado
+            safeUpdateElement('walletAddress', 'Desconectado');
+            safeUpdateElement('connectWallet', '🔗 Conectar MetaMask');
+            safeUpdateElement('dashboardReferralLink', '', 'value');
+            safeUpdateElement('referralPageLink', '', 'value');
+            safeUpdateElement('dashboardSponsorAddress', '-');
+            safeUpdateElement('referralPageSponsor', '-');
         }
+
+        // Configura os botões de copiar
+        document.querySelectorAll('.copy-button').forEach(button => {
+            const targetId = button.dataset.copyTarget;
+            if (targetId) {
+                button.onclick = () => this.copyToClipboard(targetId);
+            }
+        });
     },
 
     // Busca e mostra o patrocinador
     async getAndShowSponsor() {
         try {
+            if (!this.account) {
+                document.getElementById('dashboardSponsorAddress').innerText = '-';
+                document.getElementById('referralPageSponsor').innerText = '-';
+                return;
+            }
+
             // Verifica se tem referência na URL
             const urlParams = new URLSearchParams(window.location.search);
             const ref = urlParams.get('ref');
             
-            if (ref && this.isValidAddress(ref)) {
-                // Salva o patrocinador no localStorage
-                localStorage.setItem('sponsor_' + this.account, ref);
+            if (ref && this.isValidAddress(ref) && ref !== this.account) {
+                localStorage.setItem(`sponsor_${this.account}`, ref);
             }
 
             // Busca o patrocinador do localStorage
-            const sponsor = localStorage.getItem('sponsor_' + this.account);
+            const sponsor = localStorage.getItem(`sponsor_${this.account}`);
             
-            if (sponsor) {
-                document.getElementById('sponsorAddress').innerText = utils.formatAddress(sponsor);
-            } else {
-                document.getElementById('sponsorAddress').innerText = 'Sem patrocinador';
-            }
+            // Atualiza o patrocinador em todas as páginas
+            document.getElementById('dashboardSponsorAddress').innerText = sponsor ? utils.formatAddress(sponsor) : '-';
+            document.getElementById('referralPageSponsor').innerText = sponsor ? utils.formatAddress(sponsor) : '-';
+
+            // Atualiza links de convite
+            const referralLink = `${window.location.origin}?ref=${this.account}`;
+            document.getElementById('dashboardReferralLink').value = referralLink;
+            document.getElementById('referralPageLink').value = referralLink;
+
         } catch (error) {
             console.error('Erro ao buscar patrocinador:', error);
         }
@@ -504,6 +543,45 @@ const Web3Context = {
         } catch (error) {
             console.error('Erro ao verificar comissões:', error);
             return null;
+        }
+    },
+
+    copyToClipboard(elementId) {
+        try {
+            const element = document.getElementById(elementId);
+            if (!element) {
+                throw new Error('Elemento não encontrado');
+            }
+
+            // Tenta usar a API moderna do clipboard
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(element.value)
+                    .then(() => {
+                        utils.showSuccess('Link copiado com sucesso!');
+                    })
+                    .catch((err) => {
+                        console.error('Erro ao copiar (API moderna):', err);
+                        this.fallbackCopy(element);
+                    });
+            } else {
+                // Usa o método fallback se a API moderna não estiver disponível
+                this.fallbackCopy(element);
+            }
+        } catch (error) {
+            console.error('Erro ao copiar:', error);
+            utils.showError('Não foi possível copiar o link');
+        }
+    },
+
+    fallbackCopy(element) {
+        try {
+            element.select();
+            element.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            utils.showSuccess('Link copiado com sucesso!');
+        } catch (err) {
+            console.error('Erro no fallback de cópia:', err);
+            utils.showError('Não foi possível copiar o link');
         }
     }
 };
