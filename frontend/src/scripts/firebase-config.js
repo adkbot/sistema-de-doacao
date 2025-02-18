@@ -10,33 +10,66 @@ const firebaseConfig = {
 };
 
 // Inicializa Firebase com tratamento de erro
-try {
-    if (!window.firebase) {
-        console.error('Firebase não encontrado. Verifique se os scripts foram carregados corretamente.');
-    } else {
-        // Verifica se já foi inicializado
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-            console.log('Firebase inicializado com sucesso');
-        } else {
-            console.log('Firebase já estava inicializado');
-        }
-
-        // Referência ao banco de dados
-        const database = firebase.database();
-        
-        // Testa a conexão
-        database.ref('.info/connected').on('value', (snap) => {
-            if (snap.val() === true) {
-                console.log('Conectado ao Firebase Database');
-            } else {
-                console.log('Desconectado do Firebase Database');
+function initializeFirebase() {
+    return new Promise((resolve, reject) => {
+        try {
+            if (!window.firebase) {
+                console.error('Firebase não encontrado. Verificando scripts...');
+                // Verifica se os scripts do Firebase estão carregados
+                const firebaseApp = document.querySelector('script[src*="firebase-app"]');
+                const firebaseDb = document.querySelector('script[src*="firebase-database"]');
+                
+                if (!firebaseApp || !firebaseDb) {
+                    reject(new Error('Scripts do Firebase não encontrados'));
+                    return;
+                }
             }
-        });
 
-        // Exporta as referências
-        window.db = database;
-    }
-} catch (error) {
-    console.error('Erro ao inicializar Firebase:', error);
-} 
+            // Verifica se já foi inicializado
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log('Firebase inicializado com sucesso');
+            } else {
+                console.log('Firebase já estava inicializado');
+            }
+
+            // Referência ao banco de dados
+            const database = firebase.database();
+            
+            // Testa a conexão
+            database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    console.log('Conectado ao Firebase Database');
+                    resolve(database);
+                } else {
+                    console.log('Desconectado do Firebase Database');
+                    reject(new Error('Não foi possível conectar ao Firebase'));
+                }
+            });
+
+            // Define timeout para a conexão
+            setTimeout(() => {
+                reject(new Error('Timeout ao conectar com Firebase'));
+            }, 10000);
+
+            // Exporta as referências
+            window.db = database;
+            
+        } catch (error) {
+            console.error('Erro ao inicializar Firebase:', error);
+            reject(error);
+        }
+    });
+}
+
+// Exporta a função de inicialização
+window.initializeFirebase = initializeFirebase;
+
+// Tenta inicializar imediatamente
+initializeFirebase()
+    .then(database => {
+        console.log('Firebase pronto para uso');
+    })
+    .catch(error => {
+        console.error('Erro na inicialização do Firebase:', error);
+    }); 

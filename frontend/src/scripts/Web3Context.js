@@ -600,22 +600,51 @@ const Web3Context = {
 
     // Atualiza a interface
     updateUI() {
-        console.log('Atualizando UI com conta:', this.account);
+        console.log('Iniciando atualização da UI...');
 
         const safeUpdateElement = (id, value, property = 'innerText') => {
             const element = document.getElementById(id);
-            if (element) {
-                console.log(`Atualizando elemento ${id} com valor:`, value);
+            if (!element) {
+                console.warn(`Elemento ${id} não encontrado`);
+                return false;
+            }
+            try {
                 if (property === 'value') {
                     element.value = value;
                 } else {
                     element[property] = value;
                 }
+                console.log(`Elemento ${id} atualizado com sucesso:`, value);
                 return true;
+            } catch (error) {
+                console.error(`Erro ao atualizar elemento ${id}:`, error);
+                return false;
             }
-            console.warn(`Elemento ${id} não encontrado`);
-            return false;
         };
+
+        // Lista de elementos necessários
+        const requiredElements = [
+            'walletAddress',
+            'connectWallet',
+            'dashboardReferralLink',
+            'referralPageLink',
+            'dashboardSponsorAddress',
+            'referralPageSponsor',
+            'userStatus',
+            'userLevel',
+            'donationsReceived',
+            'totalReferrals',
+            'totalCommissions'
+        ];
+
+        // Verifica se todos os elementos necessários existem
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        if (missingElements.length > 0) {
+            console.warn('Elementos não encontrados:', missingElements);
+            // Tenta novamente após um breve delay
+            setTimeout(() => this.updateUI(), 500);
+            return;
+        }
 
         if (this.account) {
             console.log('Atualizando UI para conta conectada:', this.account);
@@ -625,22 +654,13 @@ const Web3Context = {
             safeUpdateElement('connectWallet', `🔗 ${utils.formatAddress(this.account)}`);
 
             // Gera e atualiza links de convite
-            const baseUrl = window.location.origin + window.location.pathname;
+            const baseUrl = window.location.origin;
             const referralLink = `${baseUrl}?ref=${this.account}`;
             console.log('Link de convite gerado:', referralLink);
             
             // Atualiza os links em todas as páginas
-            const dashboardLinkInput = document.getElementById('dashboardReferralLink');
-            const referralPageLinkInput = document.getElementById('referralPageLink');
-
-            if (dashboardLinkInput) {
-                dashboardLinkInput.value = referralLink;
-                console.log('Link atualizado no dashboard:', dashboardLinkInput.value);
-            }
-            if (referralPageLinkInput) {
-                referralPageLinkInput.value = referralLink;
-                console.log('Link atualizado na página de referral:', referralPageLinkInput.value);
-            }
+            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
+            safeUpdateElement('referralPageLink', referralLink, 'value');
 
             // Busca ou cria usuário
             let user = this.userManager.getUser(this.account);
@@ -652,15 +672,15 @@ const Web3Context = {
                     wallet: this.account,
                     level: 1,
                     isActive: false,
-                    sponsor: ref && this.isValidAddress(ref) ? ref : null,
+                    sponsor: ref && this.isValidAddress(ref) && ref !== this.account ? ref : null,
                     donations: 0,
                     referrals: [],
                     totalCommissions: 0
                 };
                 
                 this.userManager.saveUser(this.account, user);
-                if (ref && this.isValidAddress(ref)) {
-                    this.userManager.addReferral(ref, this.account);
+                if (user.sponsor) {
+                    this.userManager.addReferral(user.sponsor, this.account);
                 }
             }
 
@@ -670,9 +690,9 @@ const Web3Context = {
             safeUpdateElement('referralPageSponsor', formattedSponsor);
 
             // Atualiza status do usuário
+            safeUpdateElement('userStatus', user.isActive ? 'Ativo' : 'Inativo');
             const userStatus = document.getElementById('userStatus');
             if (userStatus) {
-                userStatus.textContent = user.isActive ? 'Ativo' : 'Inativo';
                 userStatus.className = user.isActive ? 'status-active' : 'status-inactive';
             }
 
@@ -680,10 +700,8 @@ const Web3Context = {
             safeUpdateElement('userLevel', user.level);
             safeUpdateElement('donationsReceived', `${user.donations}/10`);
             
-            // Atualiza total de referidos
+            // Atualiza total de referidos e comissões
             safeUpdateElement('totalReferrals', user.referrals.length);
-            
-            // Atualiza comissões
             safeUpdateElement('totalCommissions', `${user.totalCommissions.toFixed(2)} USDT`);
 
             // Configura os botões de copiar
@@ -709,10 +727,16 @@ const Web3Context = {
             safeUpdateElement('donationsReceived', '0/10');
             safeUpdateElement('totalReferrals', '0');
             safeUpdateElement('totalCommissions', '0 USDT');
+
+            const userStatus = document.getElementById('userStatus');
+            if (userStatus) {
+                userStatus.className = 'status-inactive';
+            }
         }
 
         // Atualiza estatísticas gerais
         this.userManager.updateStatistics();
+        console.log('Atualização da UI concluída');
     },
 
     // Busca e mostra o patrocinador
