@@ -1,7 +1,7 @@
 [build]
   base = "frontend"
   publish = "public"
-  command = "npm install && npm run build"
+  command = "node build.js"
 
 [[redirects]]
   from = "/*"
@@ -12,6 +12,10 @@
   for = "/*"
     [headers.values]
     Access-Control-Allow-Origin = "*"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: data:; img-src 'self' https: data:; font-src 'self' https: data:;"
 
 [[headers]]
   for = "/src/scripts/*"
@@ -28,4 +32,9 @@
 [[headers]]
   for = "/*.html"
     [headers.values]
-    Content-Type = "text/html; charset=UTF-8" 
+    Content-Type = "text/html; charset=UTF-8"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[build.environment]
+  NODE_VERSION = "16"
+  NPM_VERSION = "8" 

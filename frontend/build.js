@@ -1,10 +1,9 @@
 const fs = require('fs-extra');
 const path = require('path');
 
-// Função para copiar arquivos
-async function copyFiles() {
+async function buildProject() {
     try {
-        console.log('🚀 Iniciando build...');
+        console.log('🚀 Iniciando build do projeto...');
         
         const publicDir = path.join(__dirname, 'public');
         const srcDir = path.join(__dirname, 'src');
@@ -14,12 +13,12 @@ async function copyFiles() {
         console.log('🧹 Limpando diretório public/src...');
         await fs.remove(publicSrcDir);
         
-        // Cria a pasta public/src
-        console.log('📁 Criando diretório public/src...');
+        // Cria as pastas necessárias
+        console.log('📁 Criando estrutura de diretórios...');
         await fs.ensureDir(path.join(publicSrcDir, 'scripts'));
         await fs.ensureDir(path.join(publicSrcDir, 'styles'));
-        
-        // Lista todos os arquivos para copiar
+
+        // Lista de arquivos para copiar
         const filesToCopy = [
             {
                 src: path.join(srcDir, 'scripts', 'config.js'),
@@ -28,6 +27,10 @@ async function copyFiles() {
             {
                 src: path.join(srcDir, 'scripts', 'Web3Context.js'),
                 dest: path.join(publicSrcDir, 'scripts', 'Web3Context.js')
+            },
+            {
+                src: path.join(srcDir, 'scripts', 'firebase-config.js'),
+                dest: path.join(publicSrcDir, 'scripts', 'firebase-config.js')
             },
             {
                 src: path.join(srcDir, 'scripts', 'i18n.js'),
@@ -43,30 +46,50 @@ async function copyFiles() {
             }
         ];
 
-        // Copia cada arquivo
+        // Copia os arquivos
         console.log('📝 Copiando arquivos...');
         for (const file of filesToCopy) {
-            await fs.copy(file.src, file.dest);
-            console.log(`✅ Copiado: ${path.basename(file.src)}`);
+            try {
+                await fs.copy(file.src, file.dest);
+                console.log(`✅ Copiado: ${path.basename(file.src)}`);
+            } catch (err) {
+                console.error(`❌ Erro ao copiar ${path.basename(file.src)}:`, err);
+                throw err;
+            }
         }
 
         // Verifica se todos os arquivos foram copiados
+        console.log('🔍 Verificando arquivos...');
         const scriptsFiles = await fs.readdir(path.join(publicSrcDir, 'scripts'));
         const stylesFiles = await fs.readdir(path.join(publicSrcDir, 'styles'));
         
         console.log('\n📋 Arquivos copiados:');
         console.log('Scripts:', scriptsFiles);
         console.log('Styles:', stylesFiles);
+
+        // Verifica se todos os arquivos necessários estão presentes
+        const requiredFiles = ['config.js', 'Web3Context.js', 'firebase-config.js', 'i18n.js', 'main.js'];
+        const missingFiles = requiredFiles.filter(file => !scriptsFiles.includes(file));
         
-        if (scriptsFiles.length === 4 && stylesFiles.length === 1) {
-            console.log('\n✨ Build concluído com sucesso!');
-        } else {
-            throw new Error('Alguns arquivos não foram copiados corretamente');
+        if (missingFiles.length > 0) {
+            throw new Error(`Arquivos faltando: ${missingFiles.join(', ')}`);
         }
+
+        if (!stylesFiles.includes('main.css')) {
+            throw new Error('Arquivo main.css não encontrado');
+        }
+
+        console.log('\n✨ Build concluído com sucesso!');
+        
+        // Atualiza o arquivo de versão
+        const version = new Date().toISOString();
+        await fs.writeFile(path.join(publicDir, 'version.txt'), version);
+        console.log(`📝 Versão atualizada: ${version}`);
+
     } catch (err) {
         console.error('\n❌ Erro durante o build:', err);
         process.exit(1);
     }
 }
 
-copyFiles(); 
+buildProject(); 

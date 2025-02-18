@@ -7,6 +7,160 @@ const Web3Context = {
     networkTotal: '0',
     totalReceived: '0',
 
+    // Sistema de gerenciamento de usuários
+    userManager: {
+        users: new Map(),
+        
+        init() {
+            this.loadUsersFromStorage();
+            this.startPeriodicSync();
+            this.initializeFirebaseSync();
+        },
+
+        initializeFirebaseSync() {
+            // Referência aos usuários no Firebase
+            const usersRef = window.db.ref('users');
+
+            // Escuta mudanças em tempo real
+            usersRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    Object.values(data).forEach(userData => {
+                        this.users.set(userData.wallet, userData);
+                    });
+                    this.updateStatistics();
+                }
+            });
+        },
+
+        async saveUser(wallet, data) {
+            const userData = {
+                wallet,
+                level: data.level || 1,
+                isActive: data.isActive || false,
+                sponsor: data.sponsor || null,
+                donations: data.donations || 0,
+                lastUpdate: Date.now(),
+                referrals: data.referrals || [],
+                totalCommissions: data.totalCommissions || 0
+            };
+
+            // Salva localmente
+            this.users.set(wallet, userData);
+            localStorage.setItem(`user_${wallet}`, JSON.stringify(userData));
+
+            // Salva no Firebase
+            try {
+                await window.db.ref(`users/${wallet.toLowerCase()}`).set(userData);
+                console.log('Usuário salvo no Firebase:', wallet);
+            } catch (error) {
+                console.error('Erro ao salvar no Firebase:', error);
+            }
+
+            this.updateStatistics();
+        },
+
+        async loadUsersFromStorage() {
+            // Carrega do localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('user_')) {
+                    try {
+                        const userData = JSON.parse(localStorage.getItem(key));
+                        this.users.set(userData.wallet, userData);
+                    } catch (error) {
+                        console.error('Erro ao carregar usuário:', error);
+                    }
+                }
+            }
+
+            // Sincroniza com Firebase
+            try {
+                const snapshot = await window.db.ref('users').once('value');
+                const data = snapshot.val();
+                if (data) {
+                    Object.values(data).forEach(userData => {
+                        this.users.set(userData.wallet, userData);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar usuários do Firebase:', error);
+            }
+
+            this.updateStatistics();
+        },
+
+        getUser(wallet) {
+            return this.users.get(wallet) || null;
+        },
+
+        updateStatistics() {
+            const stats = {
+                totalUsers: this.users.size,
+                activeUsers: 0,
+                levelsCount: {1: 0, 2: 0, 3: 0},
+                totalReferrals: 0
+            };
+
+            this.users.forEach(user => {
+                if (user.isActive) stats.activeUsers++;
+                if (user.level) stats.levelsCount[user.level]++;
+                if (user.referrals) stats.totalReferrals += user.referrals.length;
+            });
+
+            // Atualiza elementos na UI
+            const updateElement = (id, value) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            };
+
+            updateElement('totalUsers', stats.totalUsers);
+            updateElement('activeUsers', stats.activeUsers);
+            updateElement('networkLevels', 
+                `Nível 1: ${stats.levelsCount[1]} | Nível 2: ${stats.levelsCount[2]} | Nível 3: ${stats.levelsCount[3]}`
+            );
+
+            // Salva estatísticas no Firebase
+            window.db.ref('statistics').set({
+                ...stats,
+                lastUpdate: Date.now()
+            });
+            
+            return stats;
+        },
+
+        async addReferral(sponsorWallet, newUserWallet) {
+            const sponsor = this.getUser(sponsorWallet);
+            if (sponsor) {
+                if (!sponsor.referrals) sponsor.referrals = [];
+                if (!sponsor.referrals.includes(newUserWallet)) {
+                    sponsor.referrals.push(newUserWallet);
+                    await this.saveUser(sponsorWallet, sponsor);
+                }
+            }
+        },
+
+        startPeriodicSync() {
+            setInterval(() => {
+                this.syncWithBlockchain();
+            }, 30000);
+        },
+
+        async syncWithBlockchain() {
+            if (!this.web3 || !this.account) return;
+
+            try {
+                // Sincroniza dados com a blockchain
+                console.log('Sincronizando dados com a blockchain...');
+                
+                // Atualiza estatísticas
+                this.updateStatistics();
+            } catch (error) {
+                console.error('Erro na sincronização:', error);
+            }
+        }
+    },
+
     // Inicializa os listeners da MetaMask
     init() {
         console.log('Inicializando Web3Context...');
@@ -14,6 +168,10 @@ const Web3Context = {
             // Cria instância do Web3
             this.web3 = new Web3(window.ethereum);
             console.log('Web3 inicializado com ethereum provider');
+
+            // Inicializa o gerenciador de usuários
+            this.userManager.init();
+            console.log('Gerenciador de usuários inicializado');
 
             // Verifica se já está conectado
             window.ethereum.request({ method: 'eth_accounts' })
@@ -409,6 +567,7 @@ const Web3Context = {
         const safeUpdateElement = (id, value, property = 'innerText') => {
             const element = document.getElementById(id);
             if (element) {
+                console.log(`Atualizando elemento ${id} com valor:`, value);
                 if (property === 'value') {
                     element.value = value;
                 } else {
@@ -421,32 +580,85 @@ const Web3Context = {
         };
 
         if (this.account) {
+            console.log('Atualizando UI para conta conectada:', this.account);
+            
             // Atualiza endereço da carteira
             safeUpdateElement('walletAddress', utils.formatAddress(this.account));
             safeUpdateElement('connectWallet', `🔗 ${utils.formatAddress(this.account)}`);
 
             // Gera e atualiza links de convite
-            const referralLink = `${window.location.origin}?ref=${this.account}`;
-            console.log('Gerando link de convite:', referralLink);
+            const baseUrl = window.location.origin + window.location.pathname;
+            const referralLink = `${baseUrl}?ref=${this.account}`;
+            console.log('Link de convite gerado:', referralLink);
             
             // Atualiza os links em todas as páginas
-            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
-            safeUpdateElement('referralPageLink', referralLink, 'value');
+            const dashboardLinkInput = document.getElementById('dashboardReferralLink');
+            const referralPageLinkInput = document.getElementById('referralPageLink');
+
+            if (dashboardLinkInput) {
+                dashboardLinkInput.value = referralLink;
+                console.log('Link atualizado no dashboard:', dashboardLinkInput.value);
+            }
+            if (referralPageLinkInput) {
+                referralPageLinkInput.value = referralLink;
+                console.log('Link atualizado na página de referral:', referralPageLinkInput.value);
+            }
+
+            // Busca ou cria usuário
+            let user = this.userManager.getUser(this.account);
+            if (!user) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const ref = urlParams.get('ref');
+                
+                user = {
+                    wallet: this.account,
+                    level: 1,
+                    isActive: false,
+                    sponsor: ref && this.isValidAddress(ref) ? ref : null,
+                    donations: 0,
+                    referrals: [],
+                    totalCommissions: 0
+                };
+                
+                this.userManager.saveUser(this.account, user);
+                if (ref && this.isValidAddress(ref)) {
+                    this.userManager.addReferral(ref, this.account);
+                }
+            }
 
             // Atualiza patrocinador
-            const sponsor = localStorage.getItem(`sponsor_${this.account}`);
-            const formattedSponsor = sponsor ? utils.formatAddress(sponsor) : '-';
+            const formattedSponsor = user.sponsor ? utils.formatAddress(user.sponsor) : '-';
             safeUpdateElement('dashboardSponsorAddress', formattedSponsor);
             safeUpdateElement('referralPageSponsor', formattedSponsor);
 
             // Atualiza status do usuário
-            const isActive = localStorage.getItem(`active_${this.account}`) === 'true';
             const userStatus = document.getElementById('userStatus');
             if (userStatus) {
-                userStatus.textContent = isActive ? 'Ativo' : 'Inativo';
-                userStatus.className = isActive ? 'status-active' : 'status-inactive';
+                userStatus.textContent = user.isActive ? 'Ativo' : 'Inativo';
+                userStatus.className = user.isActive ? 'status-active' : 'status-inactive';
             }
+
+            // Atualiza nível e doações
+            safeUpdateElement('userLevel', user.level);
+            safeUpdateElement('donationsReceived', `${user.donations}/10`);
+            
+            // Atualiza total de referidos
+            safeUpdateElement('totalReferrals', user.referrals.length);
+            
+            // Atualiza comissões
+            safeUpdateElement('totalCommissions', `${user.totalCommissions.toFixed(2)} USDT`);
+
+            // Configura os botões de copiar
+            document.querySelectorAll('.copy-button').forEach(button => {
+                const targetId = button.dataset.copyTarget;
+                if (targetId) {
+                    button.onclick = () => this.copyToClipboard(targetId);
+                }
+            });
+
         } else {
+            console.log('Limpando UI - carteira desconectada');
+            
             // Limpa informações quando desconectado
             safeUpdateElement('walletAddress', 'Desconectado');
             safeUpdateElement('connectWallet', '🔗 Conectar MetaMask');
@@ -454,15 +666,15 @@ const Web3Context = {
             safeUpdateElement('referralPageLink', '', 'value');
             safeUpdateElement('dashboardSponsorAddress', '-');
             safeUpdateElement('referralPageSponsor', '-');
+            safeUpdateElement('userStatus', 'Inativo');
+            safeUpdateElement('userLevel', '1');
+            safeUpdateElement('donationsReceived', '0/10');
+            safeUpdateElement('totalReferrals', '0');
+            safeUpdateElement('totalCommissions', '0 USDT');
         }
 
-        // Configura os botões de copiar
-        document.querySelectorAll('.copy-button').forEach(button => {
-            const targetId = button.dataset.copyTarget;
-            if (targetId) {
-                button.onclick = () => this.copyToClipboard(targetId);
-            }
-        });
+        // Atualiza estatísticas gerais
+        this.userManager.updateStatistics();
     },
 
     // Busca e mostra o patrocinador
@@ -546,6 +758,7 @@ const Web3Context = {
         }
     },
 
+    // Função melhorada para copiar link
     copyToClipboard(elementId) {
         try {
             const element = document.getElementById(elementId);
@@ -553,9 +766,11 @@ const Web3Context = {
                 throw new Error('Elemento não encontrado');
             }
 
+            const textToCopy = element.value || element.textContent;
+            
             // Tenta usar a API moderna do clipboard
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(element.value)
+                navigator.clipboard.writeText(textToCopy)
                     .then(() => {
                         utils.showSuccess('Link copiado com sucesso!');
                     })
