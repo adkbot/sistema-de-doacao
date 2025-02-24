@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import WalletConnectProvider from "@walletconnect/web3-provider";
-import { config } from './config.js';
+import { config, USDT_ABI } from './config.js';
 import { DOMManager } from './DOMManager.js';
 
 export class WalletManager {
@@ -10,51 +10,32 @@ export class WalletManager {
         this.address = null;
         this.balance = '0';
         this.usdtContract = null;
+        this.chainId = null;
+        this.isConnecting = false;
     }
 
-    // Conecta com MetaMask, Fantom, Coinbase ou Trust Wallet
-    async connect() {
+    // Conecta com MetaMask
+    async connectMetaMask() {
         try {
-            DOMManager.showLoading();
-            let provider;
-
-            if (window.ethereum) {
-                provider = new ethers.BrowserProvider(window.ethereum, "any");
-            } else if (window.fantom) {
-                provider = new ethers.BrowserProvider(window.fantom, "any");
-            } else if (window.coinbaseWallet) {
-                provider = new ethers.BrowserProvider(window.coinbaseWallet, "any");
-            } else {
-                throw new Error('Nenhuma carteira detectada. Tente WalletConnect ou instale uma carteira.');
+            if (!window.ethereum) {
+                throw new Error('MetaMask não encontrada! Por favor, instale a extensão.');
             }
 
-            // Verifica e muda para a rede Polygon
-            const network = await provider.getNetwork();
-            const polygonChainId = 137;
-            if (Number(network.chainId) !== polygonChainId) {
-                try {
-                    await provider.send('wallet_switchEthereumChain', [{ chainId: `0x${polygonChainId.toString(16)}` }]);
-                } catch (error) {
-                    throw new Error('Falha ao mudar para Polygon. Configure manualmente.');
-                }
+            this.provider = new ethers.BrowserProvider(window.ethereum);
+            const network = await this.provider.getNetwork();
+            this.chainId = network.chainId;
+
+            // Verifica e troca para a rede Polygon se necessário
+            if (this.chainId !== BigInt(137)) {
+                await this.switchToPolygon();
             }
 
-            const accounts = await provider.send('eth_requestAccounts', []);
-            if (!accounts || !accounts.length) {
-                throw new Error('Nenhuma conta encontrada');
-            }
-
-            this.provider = provider;
+            const accounts = await this.provider.send('eth_requestAccounts', []);
             this.address = accounts[0];
-            this.signer = await provider.getSigner();
-
-            // Configura contrato USDT
-            await this.setupUSDTContract();
+            this.signer = await this.provider.getSigner();
             
-            // Atualiza o saldo
+            await this.setupUSDTContract();
             await this.updateBalance();
-
-            // Configura listeners de eventos
             this.setupEventListeners();
 
             return {
@@ -62,42 +43,36 @@ export class WalletManager {
                 balance: this.balance
             };
         } catch (error) {
-            console.error('Erro ao conectar carteira:', error);
-            throw error;
-        } finally {
-            DOMManager.hideLoading();
+            console.error('Erro ao conectar MetaMask:', error);
+            throw new Error(this.getErrorMessage(error));
         }
     }
 
     // Conecta com WalletConnect
-    async connectWithWalletConnect() {
+    async connectWalletConnect() {
         try {
-            DOMManager.showLoading();
-            const walletConnectProvider = new WalletConnectProvider({
+            const provider = new WalletConnectProvider({
                 rpc: {
                     137: config.network.rpcUrls[0]
                 }
             });
 
-            await walletConnectProvider.enable();
-            const provider = new ethers.BrowserProvider(walletConnectProvider, "any");
+            await provider.enable();
+            this.provider = new ethers.BrowserProvider(provider);
             
-            const accounts = await provider.send('eth_requestAccounts', []);
-            if (!accounts || !accounts.length) {
-                throw new Error('Nenhuma conta encontrada');
+            const accounts = await this.provider.send('eth_requestAccounts', []);
+            this.address = accounts[0];
+            this.signer = await this.provider.getSigner();
+
+            const network = await this.provider.getNetwork();
+            this.chainId = network.chainId;
+
+            if (this.chainId !== BigInt(137)) {
+                throw new Error('Por favor, conecte-se à rede Polygon na sua carteira.');
             }
 
-            this.provider = provider;
-            this.address = accounts[0];
-            this.signer = await provider.getSigner();
-
-            // Configura contrato USDT
             await this.setupUSDTContract();
-            
-            // Atualiza o saldo
             await this.updateBalance();
-
-            // Configura listeners de eventos
             this.setupEventListeners();
 
             return {
@@ -105,25 +80,38 @@ export class WalletManager {
                 balance: this.balance
             };
         } catch (error) {
-            console.error('Erro ao conectar com WalletConnect:', error);
+            console.error('Erro ao conectar WalletConnect:', error);
+            throw new Error(this.getErrorMessage(error));
+        }
+    }
+
+    // Conecta com qualquer carteira disponível
+    async connect() {
+        if (this.isConnecting) return;
+        this.isConnecting = true;
+
+        try {
+            // Tenta conectar com MetaMask primeiro
+            if (window.ethereum) {
+                return await this.connectMetaMask();
+            }
+            // Se não tiver MetaMask, mostra modal de seleção de carteira
+            DOMManager.showModal(document.getElementById('walletModal'));
+        } catch (error) {
+            console.error('Erro ao conectar carteira:', error);
             throw error;
         } finally {
-            DOMManager.hideLoading();
+            this.isConnecting = false;
         }
     }
 
     // Configura o contrato USDT
     async setupUSDTContract() {
-        const usdtAbi = [
-            "function balanceOf(address owner) view returns (uint256)",
-            "function transfer(address to, uint256 amount) returns (bool)",
-            "function approve(address spender, uint256 amount) returns (bool)",
-            "function allowance(address owner, address spender) view returns (uint256)"
-        ];
+        if (!this.signer) throw new Error('Carteira não conectada');
 
         this.usdtContract = new ethers.Contract(
             config.usdtAddress,
-            usdtAbi,
+            USDT_ABI,
             this.signer
         );
     }
@@ -134,15 +122,41 @@ export class WalletManager {
             if (!this.usdtContract || !this.address) return;
 
             const balance = await this.usdtContract.balanceOf(this.address);
-            this.balance = ethers.formatUnits(balance, 6); // USDT tem 6 casas decimais
+            this.balance = ethers.formatUnits(balance, 6);
             
-            // Atualiza a interface
-            DOMManager.updateUserInfo({
-                address: this.address,
-                balance: this.balance
-            });
+            return this.balance;
         } catch (error) {
             console.error('Erro ao atualizar saldo:', error);
+            throw error;
+        }
+    }
+
+    // Muda para a rede Polygon
+    async switchToPolygon() {
+        try {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x89' }], // Polygon
+            });
+        } catch (error) {
+            if (error.code === 4902) {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0x89',
+                        chainName: 'Polygon Mainnet',
+                        nativeCurrency: {
+                            name: 'MATIC',
+                            symbol: 'MATIC',
+                            decimals: 18
+                        },
+                        rpcUrls: config.network.rpcUrls,
+                        blockExplorerUrls: config.network.blockExplorerUrls
+                    }]
+                });
+            } else {
+                throw error;
+            }
         }
     }
 
@@ -159,15 +173,13 @@ export class WalletManager {
                 throw new Error('Preencha o endereço de destino e a quantidade!');
             }
 
-            try {
-                ethers.getAddress(toAddress); // Valida o endereço de destino
-            } catch {
+            if (!ethers.isAddress(toAddress)) {
                 throw new Error('Endereço de destino inválido!');
             }
 
             // Verifica saldo
             const balance = await this.usdtContract.balanceOf(this.address);
-            const amount = ethers.parseUnits(quantity.toString(), 6); // USDT tem 6 casas decimais
+            const amount = ethers.parseUnits(quantity.toString(), 6);
             if (balance.lt(amount)) {
                 throw new Error('Saldo USDT insuficiente!');
             }
@@ -204,46 +216,6 @@ export class WalletManager {
         }
     }
 
-    // Salva a transação no histórico
-    saveTransaction(to, amount, hash) {
-        try {
-            const transaction = {
-                from: this.address,
-                to: to,
-                amount: amount,
-                hash: hash,
-                timestamp: Date.now(),
-                status: 'completed'
-            };
-
-            // Salva no localStorage
-            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            transactions.push(transaction);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-
-            // Se for uma doação para o pool, atualiza o status do usuário
-            if (to.toLowerCase() === config.poolAddress.toLowerCase()) {
-                localStorage.setItem(`donation_${this.address}`, 'active');
-            }
-        } catch (error) {
-            console.error('Erro ao salvar transação:', error);
-        }
-    }
-
-    // Retorna mensagem de erro amigável
-    getErrorMessage(error) {
-        if (error.code === 'ACTION_REJECTED') {
-            return 'Transação rejeitada pelo usuário';
-        }
-        if (error.code === 'INSUFFICIENT_FUNDS') {
-            return 'Saldo insuficiente para completar a transação';
-        }
-        if (error.message.includes('user rejected')) {
-            return 'Operação cancelada pelo usuário';
-        }
-        return 'Erro ao processar a transação. Por favor, tente novamente.';
-    }
-
     // Configura listeners de eventos
     setupEventListeners() {
         if (window.ethereum) {
@@ -256,7 +228,7 @@ export class WalletManager {
                 }
             });
 
-            window.ethereum.on('chainChanged', async () => {
+            window.ethereum.on('chainChanged', () => {
                 window.location.reload();
             });
 
@@ -273,13 +245,66 @@ export class WalletManager {
         this.address = null;
         this.balance = '0';
         this.usdtContract = null;
+        this.chainId = null;
 
-        // Atualiza a interface
-        DOMManager.updateUserInfo({
-            address: null,
-            balance: '0'
-        });
+        // Remove event listeners
+        if (window.ethereum) {
+            window.ethereum.removeListener('accountsChanged', this.handleAccountsChanged);
+            window.ethereum.removeListener('chainChanged', this.handleChainChanged);
+            window.ethereum.removeListener('disconnect', this.handleDisconnect);
+        }
+    }
+
+    // Salva a transação no histórico
+    saveTransaction(to, amount, hash) {
+        try {
+            const transaction = {
+                from: this.address,
+                to: to,
+                amount: amount,
+                hash: hash,
+                timestamp: Date.now(),
+                status: 'completed'
+            };
+
+            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+            transactions.push(transaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+
+            if (to.toLowerCase() === config.poolAddress.toLowerCase()) {
+                localStorage.setItem(`donation_${this.address}`, 'active');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar transação:', error);
+        }
+    }
+
+    // Retorna mensagem de erro amigável
+    getErrorMessage(error) {
+        if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+            return 'Transação rejeitada pelo usuário';
+        }
+        if (error.code === 'INSUFFICIENT_FUNDS') {
+            return 'Saldo insuficiente para completar a transação';
+        }
+        if (error.message.includes('user rejected') || error.message.includes('User rejected')) {
+            return 'Operação cancelada pelo usuário';
+        }
+        if (error.message.includes('insufficient funds')) {
+            return 'Saldo insuficiente para completar a transação';
+        }
+        return error.message || 'Erro ao processar a transação. Por favor, tente novamente.';
+    }
+
+    // Verifica se o endereço é válido
+    isValidAddress(address) {
+        try {
+            return ethers.isAddress(address);
+        } catch {
+            return false;
+        }
     }
 }
 
+// Exporta uma instância única
 export default new WalletManager(); 
