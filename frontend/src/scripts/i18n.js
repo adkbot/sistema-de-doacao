@@ -1,4 +1,12 @@
-$(document).ready(function() {
+// Função para inicializar o i18n
+function initI18n() {
+    // Verifica se o jQuery está carregado
+    if (typeof jQuery === 'undefined') {
+        console.error('jQuery não está carregado. Tentando novamente em 100ms...');
+        setTimeout(initI18n, 100);
+        return;
+    }
+
     // Mensagens para cada idioma
     const messages = {
         "pt": {
@@ -14,7 +22,7 @@ $(document).ready(function() {
             "network_status": "🔗 Status da Rede",
             "user_network": "Rede do Usuário:",
             "people_each_level": "Pessoas em cada nível:",
-            "total_users": "Total geral de usuários:",
+            "total_users": "Total de usuários:",
             "all_rights_reserved": "Todos os direitos reservados",
             "select_wallet": "Selecione sua Carteira",
             "select_plan": "Escolha seu Plano",
@@ -92,29 +100,32 @@ $(document).ready(function() {
     };
 
     // Inicializa o plugin i18n
-    $.i18n().load(messages);
+    jQuery.i18n().load(messages);
 
     // Configuração do i18n
-    $.i18n({
+    jQuery.i18n({
         locale: 'pt',
         fallbackLocale: 'en'
     });
 
     // Função para atualizar o idioma
     function updateLanguage(lang) {
-        $.i18n().locale = lang;
-        $('body').i18n();
+        jQuery.i18n().locale = lang;
+        jQuery('body').i18n();
         localStorage.setItem('preferredLanguage', lang);
     }
 
     // Event listener para mudança de idioma
-    $('#languageSelector').on('change', function() {
-        const selectedLang = $(this).val();
+    jQuery('#languageSelector').on('change', function() {
+        const selectedLang = jQuery(this).val();
         updateLanguage(selectedLang);
     });
 
     // Define o idioma inicial
     const savedLanguage = localStorage.getItem('preferredLanguage') || 'pt';
-    $('#languageSelector').val(savedLanguage);
+    jQuery('#languageSelector').val(savedLanguage);
     updateLanguage(savedLanguage);
-}); 
+}
+
+// Inicia quando o documento estiver pronto
+document.addEventListener('DOMContentLoaded', initI18n); 

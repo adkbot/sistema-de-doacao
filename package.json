@@ -1,0 +1,66 @@
+{
+    "name": "adk-donation-system",
+    "version": "1.0.0",
+    "description": "Sistema de doações descentralizado usando blockchain Polygon",
+    "main": "frontend/public/src/scripts/main.js",
+    "type": "module",
+    "scripts": {
+        "start": "serve frontend/public -p 3000",
+        "dev": "nodemon --watch frontend/public --ext js,html,css --exec \"npm start\"",
+        "build": "webpack --mode production",
+        "lint": "eslint frontend/public/src/scripts/",
+        "format": "prettier --write 'frontend/public/src/**/*.{js,css,html}'"
+    },
+    "dependencies": {
+        "ethers": "^5.7.2",
+        "@walletconnect/web3-provider": "^1.8.0",
+        "web3": "^1.9.0",
+        "jquery": "^3.6.0",
+        "@wikimedia/jquery.i18n": "^1.0.7",
+        "firebase": "^9.6.0"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.16.0",
+        "@babel/preset-env": "^7.16.0",
+        "eslint": "^8.2.0",
+        "nodemon": "^2.0.15",
+        "prettier": "^2.4.1",
+        "serve": "^13.0.2",
+        "webpack": "^5.64.0",
+        "webpack-cli": "^4.9.1"
+    },
+    "babel": {
+        "presets": [
+            "@babel/preset-env"
+        ]
+    },
+    "eslintConfig": {
+        "env": {
+            "browser": true,
+            "es2021": true
+        },
+        "extends": "eslint:recommended",
+        "parserOptions": {
+            "ecmaVersion": 12,
+            "sourceType": "module"
+        }
+    },
+    "prettier": {
+        "singleQuote": true,
+        "tabWidth": 4,
+        "semi": true
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/seu-usuario/adk-donation-system.git"
+    },
+    "keywords": [
+        "blockchain",
+        "polygon",
+        "web3",
+        "donation",
+        "smart-contract"
+    ],
+    "author": "Seu Nome",
+    "license": "MIT"
+} 

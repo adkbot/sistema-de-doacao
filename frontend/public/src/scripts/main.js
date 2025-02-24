@@ -1,301 +1,236 @@
-import { initializeFirebase } from './firebase-config.js';
-import { Web3Context } from './Web3Context.js';
+import { DOMManager } from './DOMManager.js';
+import { config } from './config.js';
+import { i18n } from './i18n.js';
+import WalletManager from './WalletManager.js';
 
-// Inicializa o Firebase e o Web3Context
+// Função principal de inicialização
 async function initializeApp() {
     try {
-        // Inicializa Firebase com retry
-        const database = await initializeFirebase();
-        console.log('Firebase inicializado com sucesso');
+        console.log('🚀 Iniciando aplicação...');
         
-        // Inicializa Web3Context após Firebase estar pronto
-        window.web3Context = new Web3Context(database);
-        await window.web3Context.initialize();
-        console.log('Web3Context inicializado com sucesso');
+        // Inicializa o gerenciador do DOM
+        DOMManager.init();
+        console.log('✅ DOM Manager inicializado');
+        
+        // Inicializa o sistema de internacionalização
+        i18n.init();
+        console.log('✅ Sistema de internacionalização inicializado');
+        
+        // Configura os event listeners
+        setupEventListeners();
+        console.log('✅ Event listeners configurados');
+        
+        // Carrega a página inicial
+        changePage('dashboard');
+        console.log('✅ Página inicial carregada');
         
     } catch (error) {
-        console.error('Erro na inicialização:', error);
-        // Mostra mensagem de erro para o usuário
-        const errorDiv = document.getElementById('errorMessage');
-        if (errorDiv) {
-            errorDiv.innerText = 'Erro ao conectar. Por favor, recarregue a página.';
-            errorDiv.style.display = 'block';
+        console.error('❌ Erro na inicialização:', error);
+        DOMManager.showError('Erro ao inicializar o sistema. Por favor, recarregue a página.');
+    }
+}
+
+// Configura os event listeners
+function setupEventListeners() {
+    // Navegação
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const page = btn.getAttribute('data-page');
+            changePage(page);
+        });
+    });
+
+    // Conexão da carteira
+    DOMManager.elements.connectWalletBtn?.addEventListener('click', async () => {
+        try {
+            DOMManager.showLoading();
+            await WalletManager.connect();
+            updateUI();
+        } catch (error) {
+            console.error('Erro ao conectar carteira:', error);
+            DOMManager.showError(error.message);
+        } finally {
+            DOMManager.hideLoading();
+        }
+    });
+
+    // Opção WalletConnect
+    document.querySelector('[data-wallet="walletconnect"]')?.addEventListener('click', async () => {
+        try {
+            DOMManager.showLoading();
+            await WalletManager.connectWithWalletConnect();
+            updateUI();
+        } catch (error) {
+            console.error('Erro ao conectar com WalletConnect:', error);
+            DOMManager.showError(error.message);
+        } finally {
+            DOMManager.hideLoading();
+        }
+    });
+
+    // Doação
+    DOMManager.elements.donateBtn?.addEventListener('click', async () => {
+        if (!WalletManager.address) {
+            DOMManager.showError('Por favor, conecte sua carteira primeiro');
+            return;
+        }
+        DOMManager.showModal(DOMManager.elements.planModal);
+    });
+
+    // Confirmação de doação
+    DOMManager.elements.confirmDonationBtn?.addEventListener('click', async () => {
+        try {
+            DOMManager.showLoading();
+            const amount = document.getElementById('selectedAmount').textContent;
+            await WalletManager.transfer(config.poolAddress, amount);
+            DOMManager.showSuccess('Doação realizada com sucesso!');
+            DOMManager.hideAllModals();
+            updateUI();
+        } catch (error) {
+            console.error('Erro ao processar doação:', error);
+            DOMManager.showError(error.message);
+        } finally {
+            DOMManager.hideLoading();
+        }
+    });
+
+    // Cancelar doação
+    DOMManager.elements.cancelDonationBtn?.addEventListener('click', () => {
+        DOMManager.hideAllModals();
+    });
+
+    // Seleção de plano
+    document.querySelectorAll('.select-plan-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const amount = btn.getAttribute('data-amount');
+            const plan = btn.closest('.plan-card').querySelector('h3').textContent;
+            
+            document.getElementById('selectedPlan').textContent = plan;
+            document.getElementById('selectedAmount').textContent = amount;
+            document.getElementById('selectedWallet').textContent = WalletManager.address;
+            
+            DOMManager.hideModal(DOMManager.elements.planModal);
+            DOMManager.showModal(DOMManager.elements.confirmationModal);
+        });
+    });
+}
+
+// Função para mudar de página
+function changePage(pageId) {
+    console.log('Mudando para página:', pageId);
+    
+    // Remove a classe active de todos os botões
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Adiciona a classe active ao botão clicado
+    const selectedButton = document.querySelector(`[data-page="${pageId}"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+    }
+    
+    // Esconde todas as páginas
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+        page.style.display = 'none';
+        page.style.opacity = '0';
+    });
+    
+    // Mostra a página selecionada
+    const selectedPage = document.getElementById(`${pageId}Page`);
+    if (selectedPage) {
+        selectedPage.classList.add('active');
+        selectedPage.style.display = 'block';
+        setTimeout(() => {
+            selectedPage.style.opacity = '1';
+        }, 50);
+        
+        // Atualiza as informações específicas da página
+        updatePageInfo(pageId);
+    }
+}
+
+// Atualiza informações específicas de cada página
+async function updatePageInfo(pageId) {
+    try {
+        switch (pageId) {
+            case 'dashboard':
+                await updateDashboard();
+                break;
+            case 'network':
+                await updateNetwork();
+                break;
+            case 'referral':
+                await updateReferral();
+                break;
+        }
+    } catch (error) {
+        console.error(`Erro ao atualizar página ${pageId}:`, error);
+        DOMManager.showError('Erro ao atualizar informações');
+    }
+}
+
+// Atualiza o dashboard
+async function updateDashboard() {
+    if (WalletManager.address) {
+        DOMManager.updateUserInfo({
+            address: WalletManager.address,
+            balance: WalletManager.balance,
+            status: 'Conectado'
+        });
+    }
+}
+
+// Atualiza a rede
+async function updateNetwork() {
+    // Implementar lógica de atualização da rede
+}
+
+// Atualiza referências
+async function updateReferral() {
+    if (WalletManager.address) {
+        const referralLink = `${window.location.origin}?ref=${WalletManager.address}`;
+        document.getElementById('dashboardReferralLink').value = referralLink;
+        document.getElementById('referralPageLink').value = referralLink;
+    }
+}
+
+// Atualiza toda a interface
+function updateUI() {
+    if (WalletManager.address) {
+        DOMManager.updateUserInfo({
+            address: WalletManager.address,
+            balance: WalletManager.balance,
+            status: 'Conectado'
+        });
+
+        // Atualiza botão de conexão
+        const connectButton = document.getElementById('connectWallet');
+        if (connectButton) {
+            connectButton.innerHTML = '🔗 ' + WalletManager.address.slice(0, 6) + '...' + WalletManager.address.slice(-4);
+            connectButton.classList.add('connected');
+        }
+
+        // Atualiza links de referência
+        const referralLink = `${window.location.origin}?ref=${WalletManager.address}`;
+        document.getElementById('dashboardReferralLink').value = referralLink;
+        document.getElementById('referralPageLink').value = referralLink;
+    } else {
+        DOMManager.updateUserInfo({
+            address: 'Desconectado',
+            balance: '0',
+            status: 'Desconectado'
+        });
+
+        // Reseta botão de conexão
+        const connectButton = document.getElementById('connectWallet');
+        if (connectButton) {
+            connectButton.innerHTML = '🦊 Conectar Carteira';
+            connectButton.classList.remove('connected');
         }
     }
 }
 
-// Inicia a aplicação quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', initializeApp);
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Página carregada, inicializando...');
-
-    // Inicializa o Web3Context
-    if (typeof window.ethereum !== 'undefined') {
-        Web3Context.init();
-        console.log('MetaMask está disponível');
-    } else {
-        console.error('MetaMask não está instalada');
-        utils.showError('Por favor, instale a MetaMask para usar o sistema');
-    }
-
-    // Navegação entre páginas
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove classe active de todos os botões
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            // Adiciona classe active ao botão clicado
-            btn.classList.add('active');
-
-            // Esconde todas as páginas
-            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-            // Mostra a página selecionada
-            const pageId = btn.dataset.page + 'Page';
-            document.getElementById(pageId).classList.add('active');
-        });
-    });
-
-    // Event Listeners
-    const connectWalletBtn = document.getElementById('connectWallet');
-    if (connectWalletBtn) {
-        console.log('Botão de conectar carteira encontrado');
-        connectWalletBtn.addEventListener('click', async () => {
-            console.log('Botão de conectar clicado');
-            try {
-                if (typeof window.ethereum === 'undefined') {
-                    throw new Error('MetaMask não está instalada');
-                }
-                utils.showLoading(connectWalletBtn);
-                await Web3Context.connectWallet();
-            } catch (error) {
-                console.error('Erro ao conectar carteira:', error);
-                utils.showError(error.message || 'Falha ao conectar carteira');
-            } finally {
-                utils.hideLoading(connectWalletBtn);
-            }
-        });
-    } else {
-        console.error('Botão de conectar carteira não encontrado');
-    }
-
-    // Adiciona eventos para fechar os modais
-    document.querySelectorAll('.close-modal').forEach(button => {
-        button.addEventListener('click', () => {
-            modal.hideAll();
-        });
-    });
-
-    // Fecha o modal se clicar fora dele
-    window.addEventListener('click', (event) => {
-        if (event.target.classList.contains('modal')) {
-            modal.hideAll();
-        }
-    });
-
-    // Eventos dos planos
-    document.querySelectorAll('.plan-card').forEach(card => {
-        const button = card.querySelector('.select-plan-btn');
-        if (button) {
-            button.addEventListener('click', async () => {
-                if (!Web3Context.account) {
-                    utils.showError('Por favor, conecte sua carteira primeiro!');
-                    return;
-                }
-
-                try {
-                    utils.showLoading(button);
-                    const amount = button.dataset.amount;
-
-                    // Verifica se já está ativo no sistema
-                    const isActive = localStorage.getItem(`active_${Web3Context.account}`);
-                    if (isActive === 'true') {
-                        throw new Error('Você já está ativo no sistema!');
-                    }
-
-                    // Verifica se tem patrocinador
-                    const sponsor = localStorage.getItem(`sponsor_${Web3Context.account}`);
-                    if (!sponsor) {
-                        throw new Error('Você precisa de um patrocinador para fazer doações');
-                    }
-
-                    // Inicializa contrato USDT
-                    const usdtContract = new Web3Context.web3.eth.Contract(USDT_ABI, config.usdtAddress);
-                    
-                    // Converte o valor para USDT (6 decimais)
-                    const amountInDecimals = Web3Context.web3.utils.toWei(amount, 'mwei'); // mwei para 6 decimais
-                    
-                    // Verifica saldo USDT
-                    const balance = await usdtContract.methods.balanceOf(Web3Context.account).call();
-                    if (Number(balance) < Number(amountInDecimals)) {
-                        throw new Error('Saldo USDT insuficiente para fazer a doação');
-                    }
-
-                    // Verifica allowance
-                    const allowance = await usdtContract.methods.allowance(Web3Context.account, config.poolAddress).call();
-                    if (Number(allowance) < Number(amountInDecimals)) {
-                        console.log('Solicitando aprovação de USDT...');
-                        const approveAmount = Web3Context.web3.utils.toWei('1000000', 'mwei'); // Aprova um valor alto
-                        await usdtContract.methods.approve(config.poolAddress, approveAmount).send({
-                            from: Web3Context.account
-                        });
-                    }
-                    
-                    // Envia transação
-                    console.log('Enviando transação...');
-                    console.log('Valor em decimais:', amountInDecimals);
-                    console.log('Endereço da pool:', config.poolAddress);
-                    
-                    const tx = await usdtContract.methods.transfer(config.poolAddress, amountInDecimals).send({
-                        from: Web3Context.account
-                    });
-
-                    if (tx && tx.transactionHash) {
-                        // Marca usuário como ativo
-                        localStorage.setItem(`active_${Web3Context.account}`, 'true');
-                        
-                        // Atualiza informações do usuário
-                        const currentDonations = parseInt(localStorage.getItem(`donations_${Web3Context.account}`) || '0');
-                        const currentLevel = parseInt(localStorage.getItem(`level_${Web3Context.account}`) || '1');
-                        
-                        // Incrementa doações
-                        const newDonations = currentDonations + 1;
-                        localStorage.setItem(`donations_${Web3Context.account}`, newDonations.toString());
-                        
-                        // Verifica se deve subir de nível
-                        if (newDonations >= 10) {
-                            const newLevel = Math.min(currentLevel + 1, 3);
-                            localStorage.setItem(`level_${Web3Context.account}`, newLevel.toString());
-                            localStorage.setItem(`donations_${Web3Context.account}`, '0');
-                            
-                            utils.showSuccess(`Parabéns! Você avançou para o nível ${newLevel}!`);
-                        }
-
-                        // Registra a transação
-                        const txKey = `tx_${tx.transactionHash}`;
-                        localStorage.setItem(txKey, JSON.stringify({
-                            from: Web3Context.account,
-                            to: config.poolAddress,
-                            amount: amount,
-                            sponsor: sponsor,
-                            timestamp: Date.now()
-                        }));
-                        
-                        utils.showSuccess('Doação realizada com sucesso! Você está ativo no sistema.');
-                        await Web3Context.updateNetworkStats(Web3Context.account);
-                    } else {
-                        throw new Error('Transação falhou');
-                    }
-
-                } catch (error) {
-                    console.error('Erro ao processar doação:', error);
-                    let errorMessage = error.message;
-                    
-                    // Trata erros específicos do MetaMask
-                    if (error.code === 4001) {
-                        errorMessage = 'Transação rejeitada pelo usuário';
-                    } else if (error.message.includes('insufficient funds')) {
-                        errorMessage = 'Saldo insuficiente para pagar a taxa de gás';
-                    } else if (error.message.includes('execution reverted')) {
-                        errorMessage = 'Erro na execução da transação. Verifique seu saldo USDT';
-                    }
-                    
-                    utils.showError(errorMessage || 'Erro ao processar doação');
-                } finally {
-                    utils.hideLoading(button);
-                    modal.hideAll();
-                }
-            });
-        }
-    });
-
-    // Evento de confirmação de pagamento
-    const confirmDonationBtn = document.getElementById('confirmDonation');
-    if (confirmDonationBtn) {
-        confirmDonationBtn.addEventListener('click', async () => {
-            try {
-                utils.showLoading(confirmDonationBtn);
-
-                // Inicializa contrato USDT
-                const usdtContract = new Web3Context.web3.eth.Contract(USDT_ABI, config.usdtAddress);
-                
-                // Pega o valor do plano selecionado
-                const amount = document.getElementById('selectedAmount').textContent;
-                
-                // Converte o valor para a quantidade correta de decimais (USDT usa 6 decimais na Polygon)
-                const amountInDecimals = Web3.utils.toBN(amount).mul(Web3.utils.toBN(10 ** 6));
-                
-                // Verifica saldo USDT
-                const balance = await usdtContract.methods.balanceOf(Web3Context.account).call();
-                if (Web3.utils.toBN(balance).lt(amountInDecimals)) {
-                    throw new Error('Saldo USDT insuficiente para fazer a doação');
-                }
-
-                // Estima gas para a transação
-                const gasEstimate = await usdtContract.methods.transfer(config.poolAddress, amountInDecimals).estimateGas({
-                    from: Web3Context.account
-                });
-
-                // Envia transação
-                const tx = await usdtContract.methods.transfer(config.poolAddress, amountInDecimals).send({
-                    from: Web3Context.account,
-                    gas: gasEstimate
-                });
-
-                if (!tx || !tx.transactionHash) {
-                    throw new Error('Transação falhou');
-                }
-
-                utils.showSuccess('Doação realizada com sucesso!');
-                modal.hideAll();
-                await Web3Context.updateNetworkStats(Web3Context.account);
-
-            } catch (error) {
-                console.error('Erro ao processar doação:', error);
-                utils.showError(error.message || 'Erro ao processar doação');
-            } finally {
-                utils.hideLoading(confirmDonationBtn);
-            }
-        });
-    }
-
-    // Evento de cancelamento
-    const cancelDonationBtn = document.getElementById('cancelDonation');
-    if (cancelDonationBtn) {
-        cancelDonationBtn.addEventListener('click', () => {
-            modal.hideAll();
-        });
-    }
-
-    // Adiciona evento ao botão de doação
-    const donateButton = document.getElementById('donate');
-    if (donateButton) {
-        donateButton.addEventListener('click', () => {
-            if (!Web3Context.account) {
-                utils.showError('Por favor, conecte sua carteira primeiro!');
-                return;
-            }
-
-            // Verifica se já está ativo
-            const isActive = localStorage.getItem(`active_${Web3Context.account}`);
-            if (isActive === 'true') {
-                utils.showError('Você já está ativo no sistema!');
-                return;
-            }
-
-            // Verifica se tem patrocinador
-            const sponsor = localStorage.getItem(`sponsor_${Web3Context.account}`);
-            if (!sponsor) {
-                utils.showError('Você precisa de um patrocinador para fazer doações');
-                return;
-            }
-
-            // Mostra o modal de planos
-            const planModal = document.getElementById('planModal');
-            if (planModal) {
-                // Atualiza informações no modal
-                document.getElementById('selectedWallet').textContent = utils.formatAddress(Web3Context.account);
-                modal.show(planModal);
-            }
-        });
-    }
-}); 
+// Inicializa a aplicação quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initializeApp); 

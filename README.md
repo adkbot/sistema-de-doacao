@@ -1,83 +1,117 @@
-# Sistema de Doação ADK
+# ADK Donation System
 
-Um sistema de doação descentralizado construído com Golang e Web3.js, utilizando a rede Polygon para processamento de transações.
+Sistema de doações descentralizado usando blockchain Polygon.
 
-## Estrutura do Projeto
+## 🚀 Funcionalidades
 
-```
-sistema-de-doacao/
-├── backend/
-│   └── main.go
-├── frontend/
-│   ├── public/
-│   │   └── index.html
-│   └── src/
-│       ├── components/
-│       ├── scripts/
-│       │   ├── main.js
-│       │   └── i18n.js
-│       └── styles/
-│           └── main.css
-└── README.md
-```
+- Conexão com MetaMask
+- Sistema de doações em USDT
+- Sistema de referência multinível
+- Comissões automáticas
+- Suporte a múltiplos idiomas
+- Interface responsiva
 
-## Requisitos
+## 📋 Pré-requisitos
 
-- Go 1.16 ou superior
-- Node.js 14.x ou superior
+- Node.js 14+
 - MetaMask instalado no navegador
-- Conta na rede Polygon (Mainnet ou Mumbai Testnet)
+- Conta na rede Polygon
+- USDT na rede Polygon
 
-## Configuração
+## 🔧 Instalação
 
 1. Clone o repositório:
 ```bash
-git clone [URL_DO_REPOSITORIO]
-cd sistema-de-doacao
+git clone https://github.com/seu-usuario/adk-donation-system.git
+cd adk-donation-system
 ```
 
-2. Configure as variáveis de ambiente:
+2. Instale as dependências:
 ```bash
-export PRIVATE_KEY=sua_chave_privada_aqui
+npm install
 ```
 
-3. Instale as dependências do backend:
+3. Configure as variáveis de ambiente:
 ```bash
-cd backend
-go mod init sistema-doacao
-go mod tidy
+cp .env.example .env
+# Edite o arquivo .env com suas configurações
 ```
 
-4. Execute o backend:
+4. Inicie o servidor de desenvolvimento:
 ```bash
-go run main.go
+npm run dev
 ```
 
-5. Abra o arquivo `frontend/public/index.html` em seu navegador
+## 🛠️ Construído com
 
-## Funcionalidades
+- Web3.js - Interação com blockchain
+- Firebase - Backend e banco de dados
+- jQuery - Manipulação do DOM
+- i18n - Internacionalização
 
-- Conexão com MetaMask
-- Sistema de doações em MATIC
-- Níveis de usuário (Start, Bronze, Prata, Ouro, Platina, Diamante)
-- Arbitragem automática
-- Suporte a múltiplos idiomas (PT, EN, ES, FR)
-- Dashboard em tempo real
+## 📦 Estrutura do Projeto
 
-## Segurança
+```
+frontend/
+├── public/
+│   ├── index.html
+│   └── src/
+│       ├── scripts/
+│       │   ├── config.js
+│       │   ├── Web3Context.js
+│       │   ├── firebase-config.js
+│       │   ├── i18n.js
+│       │   └── main.js
+│       └── styles/
+│           └── main.css
+├── tests/
+│   └── Web3Context.test.js
+└── package.json
+```
 
-- Nunca compartilhe sua chave privada
-- Sempre verifique se está conectado à rede Polygon correta
-- Mantenha seu MetaMask atualizado
+## 🔍 Testes
 
-## Contribuição
+Para executar os testes:
+```bash
+npm test
+```
 
-1. Faça um Fork do projeto
-2. Crie uma Branch para sua Feature (`git checkout -b feature/AmazingFeature`)
+## 🌐 Redes Suportadas
+
+- Polygon Mainnet
+- Polygon Mumbai (testnet)
+
+## 💰 Sistema de Doações
+
+1. **Níveis**
+   - Nível 1: Doação inicial
+   - Nível 2: Após 5 referências
+   - Nível 3: Após 10 referências
+
+2. **Comissões**
+   - Nível 1: 5% por referência
+   - Nível 2: 7% por referência
+   - Nível 3: 10% por referência
+
+## 🔐 Segurança
+
+- Rate limiting para transações
+- Validação de dados
+- Proteção contra ataques de replay
+- Verificação de assinatura
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## ✨ Contribuição
+
+1. Faça o fork do projeto
+2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a Branch (`git push origin feature/AmazingFeature`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## Licença
+## 📞 Suporte
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes. 
+Para suporte, envie um email para suporte@exemplo.com ou abra uma issue no GitHub. 

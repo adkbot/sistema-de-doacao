@@ -1,120 +1,118 @@
-$(document).ready(function() {
-    // Mensagens para cada idioma
-    const messages = {
-        "pt": {
-            "connect_wallet": "Conectar MetaMask",
-            "dashboard": "📊 Dashboard",
-            "wallet_connected": "Carteira Conectada:",
-            "pool_balance": "Saldo da Pool:",
-            "arbitrage_status": "Status da Arbitragem:",
-            "donation_system": "💰 Sistema de Doação",
-            "current_level": "Nível Atual:",
-            "donations_received": "Doações Recebidas:",
-            "make_donation": "Fazer Doação",
-            "network_status": "🔗 Status da Rede",
-            "user_network": "Rede do Usuário:",
-            "people_each_level": "Pessoas em cada nível:",
-            "total_users": "Total geral de usuários:",
-            "all_rights_reserved": "Todos os direitos reservados",
-            "select_wallet": "Selecione sua Carteira",
-            "select_plan": "Escolha seu Plano",
-            "confirm_donation": "Confirmar Doação",
-            "selected_plan": "Plano Selecionado",
-            "amount": "Valor",
-            "wallet": "Carteira",
-            "confirm": "Confirmar",
-            "cancel": "Cancelar",
-            "insufficient_balance": "Saldo insuficiente",
-            "donation_success": "Doação realizada com sucesso!",
-            "donation_error": "Erro ao realizar doação",
-            "connect_first": "Por favor, conecte sua carteira primeiro"
+// Sistema de internacionalização
+export const i18n = {
+    currentLanguage: 'pt',
+    translations: {
+        pt: {
+            'wallet_connected': 'Carteira Conectada',
+            'pool_balance': 'Saldo da Pool',
+            'current_level': 'Nível Atual',
+            'donations_received': 'Doações Recebidas',
+            'make_donation': 'Fazer Doação',
+            'network_status': 'Status da Rede',
+            'user_network': 'Rede do Usuário',
+            'total_users': 'Total de Usuários',
+            'select_wallet': 'Selecione sua Carteira',
+            'confirm_donation': 'Confirmar Doação',
+            'selected_plan': 'Plano Selecionado',
+            'amount': 'Valor',
+            'wallet': 'Carteira',
+            'confirm': 'Confirmar',
+            'cancel': 'Cancelar',
+            'all_rights_reserved': 'Todos os direitos reservados',
+            'error_messages': {
+                'metamask_not_found': 'MetaMask não encontrada. Por favor, instale a extensão.',
+                'wrong_network': 'Por favor, conecte-se à rede Polygon',
+                'insufficient_balance': 'Saldo insuficiente',
+                'transaction_failed': 'Transação falhou',
+                'connection_error': 'Erro de conexão'
+            }
         },
-        "en": {
-            "connect_wallet": "Connect MetaMask",
-            "dashboard": "📊 Dashboard",
-            "wallet_connected": "Wallet Connected:",
-            "pool_balance": "Pool Balance:",
-            "arbitrage_status": "Arbitrage Status:",
-            "donation_system": "💰 Donation System",
-            "current_level": "Current Level:",
-            "donations_received": "Donations Received:",
-            "make_donation": "Make Donation",
-            "network_status": "🔗 Network Status",
-            "user_network": "User Network:",
-            "people_each_level": "People in each level:",
-            "total_users": "Total users:",
-            "all_rights_reserved": "All rights reserved",
-            "select_wallet": "Select your Wallet",
-            "select_plan": "Choose your Plan",
-            "confirm_donation": "Confirm Donation",
-            "selected_plan": "Selected Plan",
-            "amount": "Amount",
-            "wallet": "Wallet",
-            "confirm": "Confirm",
-            "cancel": "Cancel",
-            "insufficient_balance": "Insufficient balance",
-            "donation_success": "Donation successful!",
-            "donation_error": "Error making donation",
-            "connect_first": "Please connect your wallet first"
-        },
-        "es": {
-            "connect_wallet": "Conectar MetaMask",
-            "dashboard": "📊 Panel de Control",
-            "wallet_connected": "Billetera Conectada:",
-            "pool_balance": "Saldo del Pool:",
-            "arbitrage_status": "Estado del Arbitraje:",
-            "donation_system": "💰 Sistema de Donación",
-            "current_level": "Nivel Actual:",
-            "donations_received": "Donaciones Recibidas:",
-            "make_donation": "Hacer Donación",
-            "network_status": "🔗 Estado de la Red",
-            "user_network": "Red del Usuario:",
-            "people_each_level": "Personas en cada nivel:",
-            "total_users": "Total de usuarios:",
-            "all_rights_reserved": "Todos los derechos reservados"
-        },
-        "fr": {
-            "connect_wallet": "Connecter MetaMask",
-            "dashboard": "📊 Tableau de Bord",
-            "wallet_connected": "Portefeuille Connecté:",
-            "pool_balance": "Solde du Pool:",
-            "arbitrage_status": "Statut d'Arbitrage:",
-            "donation_system": "💰 Système de Don",
-            "current_level": "Niveau Actuel:",
-            "donations_received": "Dons Reçus:",
-            "make_donation": "Faire un Don",
-            "network_status": "🔗 État du Réseau",
-            "user_network": "Réseau de l'Utilisateur:",
-            "people_each_level": "Personnes par niveau:",
-            "total_users": "Total des utilisateurs:",
-            "all_rights_reserved": "Tous droits réservés"
+        en: {
+            'wallet_connected': 'Wallet Connected',
+            'pool_balance': 'Pool Balance',
+            'current_level': 'Current Level',
+            'donations_received': 'Donations Received',
+            'make_donation': 'Make Donation',
+            'network_status': 'Network Status',
+            'user_network': 'User Network',
+            'total_users': 'Total Users',
+            'select_wallet': 'Select Wallet',
+            'confirm_donation': 'Confirm Donation',
+            'selected_plan': 'Selected Plan',
+            'amount': 'Amount',
+            'wallet': 'Wallet',
+            'confirm': 'Confirm',
+            'cancel': 'Cancel',
+            'all_rights_reserved': 'All rights reserved',
+            'error_messages': {
+                'metamask_not_found': 'MetaMask not found. Please install the extension.',
+                'wrong_network': 'Please connect to Polygon network',
+                'insufficient_balance': 'Insufficient balance',
+                'transaction_failed': 'Transaction failed',
+                'connection_error': 'Connection error'
+            }
         }
-    };
+    },
 
-    // Inicializa o plugin i18n
-    $.i18n().load(messages);
+    init() {
+        // Inicializa com o idioma do navegador ou padrão
+        const browserLang = navigator.language.split('-')[0];
+        this.currentLanguage = this.translations[browserLang] ? browserLang : 'pt';
+        
+        // Configura o seletor de idioma
+        const languageSelector = document.getElementById('languageSelector');
+        if (languageSelector) {
+            languageSelector.value = this.currentLanguage;
+            languageSelector.addEventListener('change', (e) => {
+                this.setLanguage(e.target.value);
+            });
+        }
 
-    // Configuração do i18n
-    $.i18n({
-        locale: 'pt',
-        fallbackLocale: 'en'
-    });
+        this.updateTexts();
+    },
 
-    // Função para atualizar o idioma
-    function updateLanguage(lang) {
-        $.i18n().locale = lang;
-        $('body').i18n();
-        localStorage.setItem('preferredLanguage', lang);
+    setLanguage(lang) {
+        if (this.translations[lang]) {
+            this.currentLanguage = lang;
+            this.updateTexts();
+            localStorage.setItem('preferred_language', lang);
+        }
+    },
+
+    t(key) {
+        const translation = this.translations[this.currentLanguage];
+        return key.split('.').reduce((obj, i) => obj ? obj[i] : null, translation) || key;
+    },
+
+    updateTexts() {
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            element.textContent = this.t(key);
+        });
+
+        // Atualiza placeholders
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+            const key = element.getAttribute('data-i18n-placeholder');
+            element.placeholder = this.t(key);
+        });
+
+        // Atualiza títulos
+        document.querySelectorAll('[data-i18n-title]').forEach(element => {
+            const key = element.getAttribute('data-i18n-title');
+            element.title = this.t(key);
+        });
+
+        // Dispara evento de atualização de idioma
+        window.dispatchEvent(new CustomEvent('languageChanged', {
+            detail: { language: this.currentLanguage }
+        }));
     }
+};
 
-    // Event listener para mudança de idioma
-    $('#languageSelector').on('change', function() {
-        const selectedLang = $(this).val();
-        updateLanguage(selectedLang);
-    });
+// Exporta o módulo
+export default i18n;
 
-    // Define o idioma inicial
-    const savedLanguage = localStorage.getItem('preferredLanguage') || 'pt';
-    $('#languageSelector').val(savedLanguage);
-    updateLanguage(savedLanguage);
+// Inicializa quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', () => {
+    i18n.init();
 }); 

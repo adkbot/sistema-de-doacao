@@ -161,9 +161,62 @@ const Web3Context = {
         }
     },
 
+    // Método para conectar carteira
+    async connectWallet() {
+        if (this.isConnecting) return;
+        
+        try {
+            this.isConnecting = true;
+            console.log('Solicitando conexão com MetaMask...');
+            
+            if (!window.ethereum) {
+                throw new Error('MetaMask não está instalada');
+            }
+
+            // Solicita acesso à carteira
+            const accounts = await window.ethereum.request({
+                method: 'eth_requestAccounts'
+            });
+
+            if (!accounts || accounts.length === 0) {
+                throw new Error('Nenhuma conta selecionada');
+            }
+
+            this.account = accounts[0];
+            console.log('Conta conectada:', this.account);
+
+            // Obtém o chainId atual
+            const chainId = await window.ethereum.request({
+                method: 'eth_chainId'
+            });
+
+            this.chainId = chainId;
+            console.log('Chain ID:', chainId);
+
+            // Verifica se está na rede correta
+            if (!this.isValidNetwork(chainId)) {
+                console.log('Rede incorreta, tentando mudar para Polygon...');
+                await this.switchToPolygon();
+            }
+
+            // Atualiza a interface
+            this.updateUI();
+            this.updateUserNetwork();
+            utils.showSuccess('Carteira conectada com sucesso!');
+
+        } catch (error) {
+            console.error('Erro ao conectar carteira:', error);
+            utils.showError(error.message || 'Erro ao conectar carteira');
+            throw error;
+        } finally {
+            this.isConnecting = false;
+        }
+    },
+
     // Inicializa os listeners da MetaMask
     init() {
         console.log('Inicializando Web3Context...');
+        
         if (window.ethereum) {
             // Cria instância do Web3
             this.web3 = new Web3(window.ethereum);
@@ -178,7 +231,7 @@ const Web3Context = {
                 .then(accounts => {
                     if (accounts.length > 0) {
                         this.account = accounts[0];
-                        console.log('Conta conectada:', this.account);
+                        console.log('Conta já conectada:', this.account);
                         
                         // Obtém o chainId atual
                         window.ethereum.request({ method: 'eth_chainId' })
@@ -190,26 +243,14 @@ const Web3Context = {
                             })
                             .catch(error => {
                                 console.error('Erro ao obter chainId:', error);
-                                this.updateUI();
-                                this.updateUserNetwork();
                             });
                     }
                 })
                 .catch(error => {
                     console.error('Erro ao verificar contas:', error);
-                    utils.showError('Erro ao conectar com a carteira');
                 });
 
-            // Listeners de eventos atualizados
-            window.ethereum.on('disconnect', (error) => {
-                console.log('Carteira desconectada:', error);
-                this.account = '';
-                this.chainId = null;
-                this.updateUI();
-                this.updateUserNetwork();
-                utils.showError('Carteira desconectada');
-            });
-
+            // Listeners de eventos
             window.ethereum.on('accountsChanged', (accounts) => {
                 console.log('Contas alteradas:', accounts);
                 if (accounts.length > 0) {
@@ -225,11 +266,10 @@ const Web3Context = {
                 }
             });
 
-            window.ethereum.on('chainChanged', (newChainId) => {
-                console.log('Rede alterada:', newChainId);
-                this.chainId = newChainId;
-                const isValidNetwork = this.isValidNetwork(newChainId);
-                if (!isValidNetwork) {
+            window.ethereum.on('chainChanged', (chainId) => {
+                console.log('Rede alterada:', chainId);
+                this.chainId = chainId;
+                if (!this.isValidNetwork(chainId)) {
                     utils.showError('Por favor, conecte-se à rede Polygon');
                 } else {
                     utils.showSuccess('Rede Polygon conectada');
@@ -238,19 +278,16 @@ const Web3Context = {
                 this.updateUserNetwork();
             });
 
-            // Verifica a rede atual
-            window.ethereum.request({ method: 'eth_chainId' })
-                .then(chainId => {
-                    this.chainId = chainId;
-                    console.log('Chain ID atual:', chainId);
-                    const isValidNetwork = this.isValidNetwork(chainId);
-                    if (!isValidNetwork) {
-                        utils.showError('Por favor, conecte-se à rede Polygon');
-                    }
-                })
-                .catch(console.error);
+            window.ethereum.on('disconnect', () => {
+                console.log('Carteira desconectada');
+                this.account = '';
+                this.chainId = null;
+                this.updateUI();
+                this.updateUserNetwork();
+                utils.showError('Carteira desconectada');
+            });
 
-            // Inicia atualização automática das estatísticas
+            // Inicia atualização automática
             this.startAutoUpdate();
         } else {
             console.error('MetaMask não encontrada');
@@ -281,109 +318,6 @@ const Web3Context = {
         console.log('Rede válida?', isValid);
         
         return isValid;
-    },
-
-    // Conecta à carteira
-    async connectWallet() {
-        if (!window.ethereum) {
-            utils.showError("Por favor, instale a MetaMask para usar o sistema.");
-            throw new Error("MetaMask não encontrada");
-        }
-
-        if (this.isConnecting) return;
-        this.isConnecting = true;
-
-        try {
-            console.log('Solicitando conexão da carteira...');
-            const accounts = await window.ethereum.request({
-                method: 'eth_requestAccounts'
-            }).catch(error => {
-                if (error.code === 4001) {
-                    throw new Error("Você precisa aprovar a conexão da carteira para continuar");
-                } else {
-                    throw error;
-                }
-            });
-
-            if (!accounts || accounts.length === 0) {
-                throw new Error("Nenhuma conta encontrada");
-            }
-
-            console.log('Conta conectada:', accounts[0]);
-            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            console.log('Chain ID atual:', chainId);
-            
-            // Verifica se estamos na Polygon mainnet
-            if (!this.isValidNetwork(chainId)) {
-                console.log('Mudando para rede Polygon...');
-                try {
-                    await this.switchToPolygon();
-                } catch (switchError) {
-                    console.error('Erro ao mudar rede:', switchError);
-                    if (switchError.code === 4902) {
-                        try {
-                            await window.ethereum.request({
-                                method: 'wallet_addEthereumChain',
-                                params: [{
-                                    chainId: '0x89',
-                                    chainName: 'Polygon Mainnet',
-                                    nativeCurrency: {
-                                        name: 'MATIC',
-                                        symbol: 'MATIC',
-                                        decimals: 18
-                                    },
-                                    rpcUrls: ['https://polygon-rpc.com/'],
-                                    blockExplorerUrls: ['https://polygonscan.com/']
-                                }]
-                            });
-                        } catch (addError) {
-                            if (addError.code === 4001) {
-                                throw new Error("Você precisa adicionar a rede Polygon para continuar");
-                            }
-                            throw new Error("Falha ao adicionar a rede Polygon ao MetaMask");
-                        }
-                    } else if (switchError.code === 4001) {
-                        throw new Error("Você precisa mudar para a rede Polygon para continuar");
-                    } else {
-                        throw new Error("Falha ao mudar para a rede Polygon");
-                    }
-                }
-            }
-
-            this.account = accounts[0];
-            this.chainId = chainId;
-
-            // Registra o usuário se for novo
-            if (!localStorage.getItem(`level_${this.account}`)) {
-                localStorage.setItem(`level_${this.account}`, '1');
-                localStorage.setItem(`donations_${this.account}`, '0');
-                
-                // Verifica se tem referência na URL
-                const urlParams = new URLSearchParams(window.location.search);
-                const ref = urlParams.get('ref');
-                
-                if (ref && this.isValidAddress(ref) && ref !== this.account) {
-                    localStorage.setItem(`sponsor_${this.account}`, ref);
-                    console.log('Patrocinador registrado:', ref);
-                }
-            }
-
-            await this.updateNetworkStats(accounts[0]);
-            this.updateUI();
-
-            utils.showSuccess('Carteira conectada com sucesso!');
-            console.log('Conexão completa:', this.account);
-            
-            // Remove a exibição automática do modal
-            // modal.show(elements.planModal);
-
-        } catch (error) {
-            console.error('Erro na conexão:', error.message);
-            utils.showError(error.message || 'Erro ao conectar carteira');
-            throw error;
-        } finally {
-            this.isConnecting = false;
-        }
     },
 
     // Verifica saldo via PolygonScan
@@ -502,86 +436,48 @@ const Web3Context = {
         }
     },
 
-    // Atualiza a rede de usuários
+    // Atualiza informações da rede do usuário
     async updateUserNetwork() {
-        if (!this.account) {
-            console.log('Carteira não conectada, atualizando UI com valores padrão');
-            document.getElementById('userNetwork').textContent = 'Desconectado';
-            document.getElementById('totalUsers').textContent = '0';
-            document.getElementById('networkLevels').textContent = 'Nível 1: 0 | Nível 2: 0 | Nível 3: 0';
-            return;
-        }
-
+        if (!this.account) return;
+        
         try {
-            console.log('Atualizando rede do usuário para:', this.account);
+            // Atualiza o status da rede
+            const networkElement = document.getElementById('userNetwork');
+            if (networkElement) {
+                const networkName = this.chainId === '0x89' ? 'Polygon Mainnet' : 'Rede Incorreta';
+                networkElement.textContent = networkName;
+            }
             
-            // Atualiza nome da rede
-            const networkName = this.getNetworkName(this.chainId);
-            console.log('Nome da rede:', networkName);
-            document.getElementById('userNetwork').textContent = networkName;
-
-            let totalUsers = 0;
-            let usersPerLevel = {1: 0, 2: 0, 3: 0};
-            let networkUsers = [];
-
-            // Busca usuários da rede
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('level_')) {
-                    const userAddress = key.replace('level_', '');
-                    const userLevel = parseInt(localStorage.getItem(key));
-                    const userSponsor = localStorage.getItem(`sponsor_${userAddress}`);
-                    
-                    if (userSponsor === this.account) {
-                        networkUsers.push({
-                            address: userAddress,
-                            level: userLevel
-                        });
-                        usersPerLevel[userLevel] = (usersPerLevel[userLevel] || 0) + 1;
-                        totalUsers++;
+            // Atualiza informações dos níveis
+            const level1Users = document.getElementById('level1Users');
+            const level2Users = document.getElementById('level2Users');
+            const level3Users = document.getElementById('level3Users');
+            
+            if (level1Users) level1Users.innerHTML = '';
+            if (level2Users) level2Users.innerHTML = '';
+            if (level3Users) level3Users.innerHTML = '';
+            
+            // Busca usuários da rede no Firebase
+            const usersRef = window.db.ref('users');
+            const snapshot = await usersRef.once('value');
+            const users = snapshot.val();
+            
+            if (users) {
+                Object.values(users).forEach(user => {
+                    if (user.sponsor === this.account) {
+                        // Nível 1 - Referidos diretos
+                        if (level1Users) {
+                            const userDiv = document.createElement('div');
+                            userDiv.className = 'user-address';
+                            userDiv.textContent = user.wallet.substring(0, 6) + '...' + user.wallet.substring(38);
+                            level1Users.appendChild(userDiv);
+                        }
                     }
-                }
+                });
             }
-
-            console.log('Total de usuários encontrados:', totalUsers);
-            console.log('Usuários por nível:', usersPerLevel);
-
-            // Atualiza a interface para cada nível
-            for (let level = 1; level <= 3; level++) {
-                const usersDiv = document.getElementById(`level${level}Users`);
-                if (!usersDiv) {
-                    console.log(`Elemento level${level}Users não encontrado`);
-                    continue;
-                }
-                
-                usersDiv.innerHTML = ''; // Limpa o conteúdo anterior
-                
-                const levelUsers = networkUsers.filter(user => user.level === level);
-                
-                if (levelUsers.length > 0) {
-                    levelUsers.forEach(user => {
-                        const userElement = document.createElement('div');
-                        userElement.className = 'user-address';
-                        userElement.textContent = utils.formatAddress(user.address);
-                        userElement.title = user.address;
-                        userElement.onclick = () => {
-                            window.open(`https://polygonscan.com/address/${user.address}`, '_blank');
-                        };
-                        usersDiv.appendChild(userElement);
-                    });
-                } else {
-                    usersDiv.innerHTML = '<em>Nenhum usuário neste nível</em>';
-                }
-            }
-
-            // Atualiza contadores
-            document.getElementById('totalUsers').textContent = totalUsers;
-            document.getElementById('networkLevels').textContent = 
-                `Nível 1: ${usersPerLevel[1]} | Nível 2: ${usersPerLevel[2]} | Nível 3: ${usersPerLevel[3]}`;
-
+            
         } catch (error) {
-            console.error('Erro ao atualizar rede de usuários:', error);
-            utils.showError('Erro ao atualizar informações da rede');
+            console.error('Erro ao atualizar rede do usuário:', error);
         }
     },
 
@@ -600,86 +496,48 @@ const Web3Context = {
 
     // Atualiza a interface
     updateUI() {
-        console.log('Atualizando UI com conta:', this.account);
+        const connectButton = document.getElementById('connectWallet');
+        const walletAddress = document.getElementById('walletAddress');
         
-        const safeUpdateElement = (id, value, property = 'innerText') => {
-            const element = document.getElementById(id);
-            if (element) {
-                try {
-                    if (property === 'value' && element.tagName === 'INPUT') {
-                        element.value = value || '';
-                    } else {
-                        element[property] = value || '';
-                    }
-                } catch (error) {
-                    console.warn(`Erro ao atualizar elemento ${id}:`, error);
-                }
-            }
-        };
-
-        // Atualiza elementos da UI com verificação de existência
         if (this.account) {
-            // Atualiza endereço da carteira
-            safeUpdateElement('walletAddress', utils.formatAddress(this.account));
-            
-            // Atualiza links de convite
-            const referralLink = `${window.location.origin}?ref=${this.account}`;
-            safeUpdateElement('dashboardReferralLink', referralLink, 'value');
-            safeUpdateElement('referralPageLink', referralLink, 'value');
-            
-            // Atualiza status do botão
-            const connectButton = document.getElementById('connectWallet');
+            // Atualiza o botão de conexão
             if (connectButton) {
-                connectButton.innerHTML = '🔗 ' + utils.formatAddress(this.account);
-                connectButton.classList.add('connected');
+                connectButton.textContent = '🔗 ' + this.account.substring(0, 6) + '...' + this.account.substring(38);
             }
-
-            // Busca dados do usuário
-            const user = this.userManager?.getUser(this.account);
-            if (user) {
-                safeUpdateElement('userStatus', user.isActive ? 'Ativo' : 'Inativo');
-                safeUpdateElement('userLevel', user.level);
-                safeUpdateElement('donationsReceived', `${user.donations}/10`);
-                safeUpdateElement('totalReferrals', user.referrals?.length || 0);
-                safeUpdateElement('totalCommissions', `${user.totalCommissions || 0} USDT`);
-                
-                const userStatus = document.getElementById('userStatus');
-                if (userStatus) {
-                    userStatus.className = user.isActive ? 'status-active' : 'status-inactive';
-                }
+            
+            // Atualiza o endereço da carteira
+            if (walletAddress) {
+                walletAddress.textContent = this.account;
+            }
+            
+            // Atualiza outros elementos da UI
+            const userStatus = document.getElementById('userStatus');
+            if (userStatus) {
+                const isActive = localStorage.getItem(`active_${this.account}`) === 'true';
+                userStatus.textContent = isActive ? 'Ativo' : 'Inativo';
+                userStatus.className = isActive ? 'status-active' : 'status-inactive';
+            }
+            
+            // Atualiza nível e doações
+            const userLevel = document.getElementById('userLevel');
+            const donationsReceived = document.getElementById('donationsReceived');
+            
+            if (userLevel) {
+                userLevel.textContent = localStorage.getItem(`level_${this.account}`) || '1';
+            }
+            
+            if (donationsReceived) {
+                donationsReceived.textContent = localStorage.getItem(`donations_${this.account}`) || '0';
             }
         } else {
-            // Limpa informações quando desconectado
-            safeUpdateElement('walletAddress', 'Desconectado');
-            safeUpdateElement('dashboardReferralLink', '', 'value');
-            safeUpdateElement('referralPageLink', '', 'value');
-            
-            // Reseta botão
-            const connectButton = document.getElementById('connectWallet');
+            // Reset UI para estado desconectado
             if (connectButton) {
-                connectButton.innerHTML = '🔗 Conectar MetaMask';
-                connectButton.classList.remove('connected');
+                connectButton.textContent = '🔗 Conectar MetaMask';
             }
-
-            // Limpa informações do usuário
-            safeUpdateElement('userStatus', 'Inativo');
-            safeUpdateElement('userLevel', '1');
-            safeUpdateElement('donationsReceived', '0/10');
-            safeUpdateElement('totalReferrals', '0');
-            safeUpdateElement('totalCommissions', '0 USDT');
-        }
-
-        // Atualiza status da rede
-        if (this.chainId) {
-            const networkName = this.getNetworkName(this.chainId);
-            safeUpdateElement('userNetwork', networkName);
-        } else {
-            safeUpdateElement('userNetwork', 'Desconhecido');
-        }
-
-        // Atualiza estatísticas se disponível
-        if (this.userManager) {
-            this.userManager.updateStatistics();
+            
+            if (walletAddress) {
+                walletAddress.textContent = 'Desconectado';
+            }
         }
     },
 
