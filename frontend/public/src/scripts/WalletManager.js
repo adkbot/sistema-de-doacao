@@ -151,6 +151,10 @@ export class WalletManager {
         try {
             DOMManager.showLoading();
 
+            if (!this.address) {
+                throw new Error('Carteira não conectada');
+            }
+
             if (!toAddress || !quantity) {
                 throw new Error('Preencha o endereço de destino e a quantidade!');
             }
@@ -163,32 +167,81 @@ export class WalletManager {
 
             // Verifica saldo
             const balance = await this.usdtContract.balanceOf(this.address);
-            const amount = ethers.parseUnits(quantity.toString(), 6);
+            const amount = ethers.parseUnits(quantity.toString(), 6); // USDT tem 6 casas decimais
             if (balance.lt(amount)) {
                 throw new Error('Saldo USDT insuficiente!');
             }
 
-            // Verifica allowance
+            // Verifica e aprova allowance se necessário
             const allowance = await this.usdtContract.allowance(this.address, config.poolAddress);
             if (allowance.lt(amount)) {
+                console.log('Solicitando aprovação de USDT...');
                 const approveTx = await this.usdtContract.approve(config.poolAddress, ethers.MaxUint256);
+                console.log('Aguardando confirmação da aprovação...');
                 await approveTx.wait();
+                console.log('Aprovação confirmada!');
             }
 
             // Faz a transferência
+            console.log('Iniciando transferência...');
             const tx = await this.usdtContract.transfer(toAddress, amount);
+            console.log('Aguardando confirmação da transferência...');
             await tx.wait();
+            console.log('Transferência confirmada!');
 
             // Atualiza o saldo
             await this.updateBalance();
 
+            // Salva a transação no histórico
+            this.saveTransaction(toAddress, quantity, tx.hash);
+
             return tx.hash;
         } catch (error) {
             console.error('Erro na transferência:', error);
-            throw error;
+            throw new Error(this.getErrorMessage(error));
         } finally {
             DOMManager.hideLoading();
         }
+    }
+
+    // Salva a transação no histórico
+    saveTransaction(to, amount, hash) {
+        try {
+            const transaction = {
+                from: this.address,
+                to: to,
+                amount: amount,
+                hash: hash,
+                timestamp: Date.now(),
+                status: 'completed'
+            };
+
+            // Salva no localStorage
+            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+            transactions.push(transaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+
+            // Se for uma doação para o pool, atualiza o status do usuário
+            if (to.toLowerCase() === config.poolAddress.toLowerCase()) {
+                localStorage.setItem(`donation_${this.address}`, 'active');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar transação:', error);
+        }
+    }
+
+    // Retorna mensagem de erro amigável
+    getErrorMessage(error) {
+        if (error.code === 'ACTION_REJECTED') {
+            return 'Transação rejeitada pelo usuário';
+        }
+        if (error.code === 'INSUFFICIENT_FUNDS') {
+            return 'Saldo insuficiente para completar a transação';
+        }
+        if (error.message.includes('user rejected')) {
+            return 'Operação cancelada pelo usuário';
+        }
+        return 'Erro ao processar a transação. Por favor, tente novamente.';
     }
 
     // Configura listeners de eventos

@@ -69,48 +69,72 @@ function setupEventListeners() {
     });
 
     // Doação
-    DOMManager.elements.donateBtn?.addEventListener('click', async () => {
-        if (!WalletManager.address) {
-            DOMManager.showError('Por favor, conecte sua carteira primeiro');
-            return;
-        }
-        DOMManager.showModal(DOMManager.elements.planModal);
-    });
-
-    // Confirmação de doação
-    DOMManager.elements.confirmDonationBtn?.addEventListener('click', async () => {
-        try {
-            DOMManager.showLoading();
-            const amount = document.getElementById('selectedAmount').textContent;
-            await WalletManager.transfer(config.poolAddress, amount);
-            DOMManager.showSuccess('Doação realizada com sucesso!');
-            DOMManager.hideAllModals();
-            updateUI();
-        } catch (error) {
-            console.error('Erro ao processar doação:', error);
-            DOMManager.showError(error.message);
-        } finally {
-            DOMManager.hideLoading();
-        }
-    });
-
-    // Cancelar doação
-    DOMManager.elements.cancelDonationBtn?.addEventListener('click', () => {
-        DOMManager.hideAllModals();
-    });
+    const donateBtn = document.getElementById('donate');
+    if (donateBtn) {
+        donateBtn.addEventListener('click', async () => {
+            try {
+                if (!WalletManager.address) {
+                    DOMManager.showError('Por favor, conecte sua carteira primeiro');
+                    return;
+                }
+                DOMManager.showModal(document.getElementById('planModal'));
+            } catch (error) {
+                console.error('Erro ao abrir modal de doação:', error);
+                DOMManager.showError('Erro ao processar doação');
+            }
+        });
+    }
 
     // Seleção de plano
     document.querySelectorAll('.select-plan-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const amount = btn.getAttribute('data-amount');
-            const plan = btn.closest('.plan-card').querySelector('h3').textContent;
-            
-            document.getElementById('selectedPlan').textContent = plan;
-            document.getElementById('selectedAmount').textContent = amount;
-            document.getElementById('selectedWallet').textContent = WalletManager.address;
-            
-            DOMManager.hideModal(DOMManager.elements.planModal);
-            DOMManager.showModal(DOMManager.elements.confirmationModal);
+        btn.addEventListener('click', async () => {
+            try {
+                const amount = btn.getAttribute('data-amount');
+                const plan = btn.closest('.plan-card').querySelector('h3').textContent;
+                
+                document.getElementById('selectedPlan').textContent = plan;
+                document.getElementById('selectedAmount').textContent = amount;
+                document.getElementById('selectedWallet').textContent = WalletManager.address;
+                
+                DOMManager.hideModal(document.getElementById('planModal'));
+                DOMManager.showModal(document.getElementById('confirmationModal'));
+            } catch (error) {
+                console.error('Erro ao selecionar plano:', error);
+                DOMManager.showError('Erro ao selecionar plano');
+            }
+        });
+    });
+
+    // Confirmação de doação
+    const confirmDonationBtn = document.getElementById('confirmDonation');
+    if (confirmDonationBtn) {
+        confirmDonationBtn.addEventListener('click', async () => {
+            try {
+                DOMManager.showLoading();
+                const amount = document.getElementById('selectedAmount').textContent;
+                await WalletManager.transfer(config.poolAddress, amount);
+                DOMManager.showSuccess('Doação realizada com sucesso!');
+                DOMManager.hideAllModals();
+                updateUI();
+            } catch (error) {
+                console.error('Erro ao processar doação:', error);
+                DOMManager.showError(error.message);
+            } finally {
+                DOMManager.hideLoading();
+            }
+        });
+    }
+
+    // Botões de copiar link
+    document.querySelectorAll('[data-copy-target]').forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.getAttribute('data-copy-target');
+            const element = document.getElementById(targetId);
+            if (element) {
+                navigator.clipboard.writeText(element.value)
+                    .then(() => DOMManager.showSuccess('Link copiado com sucesso!'))
+                    .catch(() => DOMManager.showError('Erro ao copiar link'));
+            }
         });
     });
 }
@@ -190,14 +214,40 @@ async function updateNetwork() {
 // Atualiza referências
 async function updateReferral() {
     if (WalletManager.address) {
+        // Pega o referral da URL se existir
+        const urlParams = new URLSearchParams(window.location.search);
+        const ref = urlParams.get('ref');
+        
+        // Se tiver referral na URL e for um endereço válido, salva no localStorage
+        if (ref && WalletManager.isValidAddress(ref) && ref !== WalletManager.address) {
+            localStorage.setItem(`sponsor_${WalletManager.address}`, ref);
+        }
+
+        // Busca o patrocinador do localStorage
+        const sponsor = localStorage.getItem(`sponsor_${WalletManager.address}`);
+        
+        // Atualiza os links de convite
         const referralLink = `${window.location.origin}?ref=${WalletManager.address}`;
-        document.getElementById('dashboardReferralLink').value = referralLink;
-        document.getElementById('referralPageLink').value = referralLink;
+        if (document.getElementById('dashboardReferralLink')) {
+            document.getElementById('dashboardReferralLink').value = referralLink;
+        }
+        if (document.getElementById('referralPageLink')) {
+            document.getElementById('referralPageLink').value = referralLink;
+        }
+
+        // Atualiza os endereços do patrocinador
+        const formattedSponsor = sponsor ? `${sponsor.slice(0, 6)}...${sponsor.slice(-4)}` : '-';
+        if (document.getElementById('dashboardSponsorAddress')) {
+            document.getElementById('dashboardSponsorAddress').textContent = formattedSponsor;
+        }
+        if (document.getElementById('referralPageSponsor')) {
+            document.getElementById('referralPageSponsor').textContent = formattedSponsor;
+        }
     }
 }
 
 // Atualiza toda a interface
-function updateUI() {
+async function updateUI() {
     if (WalletManager.address) {
         DOMManager.updateUserInfo({
             address: WalletManager.address,
@@ -212,10 +262,8 @@ function updateUI() {
             connectButton.classList.add('connected');
         }
 
-        // Atualiza links de referência
-        const referralLink = `${window.location.origin}?ref=${WalletManager.address}`;
-        document.getElementById('dashboardReferralLink').value = referralLink;
-        document.getElementById('referralPageLink').value = referralLink;
+        // Atualiza referências
+        await updateReferral();
     } else {
         DOMManager.updateUserInfo({
             address: 'Desconectado',

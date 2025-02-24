@@ -2,18 +2,22 @@
 export const config = {
     // Endereços dos contratos
     poolAddress: '0xa477E1a3F20E0fE460d1fb48cD8323248D3C42DD',
-    usdtAddress: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+    usdtAddress: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', // USDT na Polygon
     
     // Configurações da rede
     network: {
-        chainId: '0x89',
+        chainId: '0x89', // Polygon Mainnet
         chainName: 'Polygon Mainnet',
         nativeCurrency: {
             name: 'MATIC',
             symbol: 'MATIC',
             decimals: 18
         },
-        rpcUrls: ['https://polygon-rpc.com/'],
+        rpcUrls: [
+            'https://polygon-rpc.com',
+            'https://rpc-mainnet.matic.network',
+            'https://rpc-mainnet.maticvigil.com'
+        ],
         blockExplorerUrls: ['https://polygonscan.com/']
     },
 
@@ -30,9 +34,9 @@ export const config = {
 
     // Configurações de segurança
     security: {
-        rateLimit: 5000,
+        rateLimit: 5000, // 5 segundos entre transações
         maxRetries: 3,
-        timeoutDuration: 30000
+        timeoutDuration: 30000 // 30 segundos
     }
 };
 
@@ -52,6 +56,26 @@ export const USDT_ABI = [
             {"name": "_value","type": "uint256"}
         ],
         "name": "transfer",
+        "outputs": [{"name": "","type": "bool"}],
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {"name": "_owner","type": "address"},
+            {"name": "_spender","type": "address"}
+        ],
+        "name": "allowance",
+        "outputs": [{"name": "","type": "uint256"}],
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {"name": "_spender","type": "address"},
+            {"name": "_value","type": "uint256"}
+        ],
+        "name": "approve",
         "outputs": [{"name": "","type": "bool"}],
         "type": "function"
     },
@@ -102,6 +126,14 @@ export const utils = {
     
     formatAmount: (amount, decimals = 2) => {
         return Number(amount).toFixed(decimals);
+    },
+
+    isValidAddress: (address) => {
+        try {
+            return ethers.utils.isAddress(address);
+        } catch {
+            return false;
+        }
     }
 };
 
