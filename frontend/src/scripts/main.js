@@ -27,12 +27,12 @@ window.utils = utils;
 // Função para conectar MetaMask
 async function conectarMetaMask() {
     console.log('Tentando conectar MetaMask...');
-    
+
     if (!checkDependencies()) {
         utils.showMessage('Por favor, instale a MetaMask!', true);
         return;
     }
-    
+
     try {
         // Solicita as contas
         console.log('Solicitando contas...');
@@ -83,6 +83,21 @@ async function conectarMetaMask() {
     }
 }
 
+// Função para trocar de página (navegação)
+function changePage(pageId) {
+    // Esconde todas as páginas com a classe "page"
+    document.querySelectorAll('.page').forEach(page => {
+        page.style.display = 'none';
+    });
+    // Exibe a página selecionada, se existir
+    const page = document.getElementById(pageId);
+    if (page) {
+        page.style.display = 'block';
+    } else {
+        console.error(`Página "${pageId}" não encontrada!`);
+    }
+}
+
 // Inicializa quando a página carregar
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Página carregada, inicializando...');
@@ -109,4 +124,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mostra a página inicial
     changePage('dashboard');
-}); 
+});
